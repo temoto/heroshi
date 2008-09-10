@@ -41,6 +41,20 @@ class ProtocolAction(object):
     def pack(self):
         return "%s.%s" % (self.action, self.data)
 
+    def done(self):
+        # no handler is set
+        if not self.on_done:
+            return
+        try:
+            for handler in self.on_done:
+                handler(self)
+        except TypeError:
+            pass
+        try:
+            self.on_done(self)
+        except TypeError:
+            pass
+
     def __unicode__(self):
         return self.action
 
@@ -58,6 +72,7 @@ class ActionGet(ProtocolAction):
     num = 0
 
     def __init__(self, num, on_done=None):
+        self.action = 'GET'
         try:
             self.num = int(num)
         except:
@@ -71,9 +86,18 @@ class ActionPut(ProtocolAction):
     items = []
 
     def __init__(self, items, on_done=None):
+        self.action = 'PUT'
         self.items = items
         pickled = cPickle.dumps(self.items)
         super(ActionPut, self).__init__('PUT', pickled, on_done)
+
+
+class ActionClose(ProtocolAction):
+    """CLOSE action
+    For this action, worker stops any jobs and quits."""
+
+    def __init__(self, on_done=None):
+        self.action = 'CLOSE'
 
 
 def read_action(s):
@@ -102,18 +126,23 @@ class QueueManagement(Int32StringReceiver):
     on_disconnect = None
 
     def connectionMade(self):
-        debug("connected to server")
-        if not self.factory.actions:
-            debug("connected, but no actions are assigned")
+#         debug("connected to server")
+        self.current_action = self.factory.current_action
+        self.do()
+
+    def do(self):
+        if self.current_action is None:
+            debug("nothing else to do")
             self.transport.loseConnection()
-            return
-        self.current_action = self.factory.actions.pop()
-        if type(self.current_action) is ActionGet:
+        elif type(self.current_action) is ActionGet:
             debug("requesting %d items" % self.current_action.num)
             self.sendString(self.current_action.pack())
         elif type(self.current_action) is ActionPut:
             debug("sending %d items" % len(self.current_action.items))
             self.sendString(self.current_action.pack())
+        elif type(self.current_action) is ActionClose:
+            debug("got close action, exiting on disconnect")
+            self.transport.loseConnection()
         else:
             debug("unknown factory.action %s. Panic" % self.current_action)
 
@@ -126,7 +155,7 @@ class QueueManagement(Int32StringReceiver):
             debug("connection with server lost: %s" % reason)
 
     def stringReceived(self, string):
-        debug("recieved: %s" % string)
+#         debug("recieved: %s" % string)
         try:
             status, data = string.split('.', 1)
             if status == 'EMPTY':
@@ -164,9 +193,13 @@ class QueueManagement(Int32StringReceiver):
 
     def next_action(self):
         old_action = self.factory.current_action
+        if old_action:
+            old_action.done()
         new_action = self.factory.next_action()
         if new_action is not None:
             debug("action %s done. doing: %s" % (old_action, new_action))
+            self.current_action = new_action
+            self.do()
         else:
             debug("all actions done. disconnecting.")
             self.transport.loseConnection()
@@ -185,12 +218,16 @@ class QueueClientFactory(ClientFactory):
         debug("created client queue factory with %d items, actions: %s" % (len(items) if items else 0, actions))
         self.protocol = QueueManagement
         self.actions = actions
+        self.actions.reverse()
         self.num = num
         if items:
             self.items = items
         self.protocol.on_disconnect = self.on_protocol_disconnect
+        self.next_action()
 
     def next_action(self):
+        if self.current_action:
+            self.current_action.done()
         if len(self.actions):
             self.current_action = self.actions.pop()
             return self.current_action
@@ -198,6 +235,10 @@ class QueueClientFactory(ClientFactory):
             return
 
     def on_protocol_disconnect(self, protocol, reason):
+        debug("factory disconnected")
+        if type(self.current_action) is ActionClose:
+            reactor.stop()
+            self.current_action.done()
         if self.on_disconnect:
             self.on_disconnect(protocol, reason)
 

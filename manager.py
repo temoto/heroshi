@@ -48,8 +48,10 @@ class CrawlManagement(Int32StringReceiver):
 
     def action_get(self, num):
         debug("peer requested %d items, crawl queue has %d items" % (num, len(self.factory.crawl_queue)))
-        if len(self.factory.crawl_queue):
-            items = random.sample(self.factory.crawl_queue, num)
+        send_num = min(num, len(self.factory.crawl_queue))
+        debug("giving %d items" % send_num)
+        if send_num >= 1 and len(self.factory.crawl_queue):
+            items = random.sample(self.factory.crawl_queue, send_num)
             pickled = cPickle.dumps(items)
             self.sendString('TAKE.' + pickled)
         else:
@@ -127,15 +129,16 @@ class QueueManagerParameters(object):
 
 def main():
     misc.params = QueueManagerParameters(sys.argv)
+    crawl_queue = CrawlQueue(QUEUE_PATH)
     try:
-        crawl_factory = CrawlManagementFactory(CrawlQueue(QUEUE_PATH))
+        crawl_factory = CrawlManagementFactory(crawl_queue)
 
         reactor.listenTCP(BIND_PORT, crawl_factory, interface="127.0.0.1")
         debug("Ready. Loaded queue of %d items. Accepting connections..." % len(crawl_factory.crawl_queue))
         reactor.run()
     finally:
         debug("Gracefully shutting down")
-        crawl_factory.crawl_queue.save_queue()
+        crawl_queue.save_queue()
 
 if __name__ == '__main__':
     main()

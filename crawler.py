@@ -11,7 +11,7 @@ from BeautifulSoup import BeautifulSoup
 from twisted.web.client import getPage
 from twisted.internet import reactor
 
-from client_protocol import BIND_PORT, ActionGet, ActionPut, QueueClientFactory
+from client_protocol import BIND_PORT, ActionGet, ActionPut, ActionClose, QueueClientFactory
 import misc
 from misc import HEROSHI_VERSION, debug
 from link import Link
@@ -40,16 +40,14 @@ class Crawler(object):
     server_address = None
     server_port = 0
     _pool = []
+    _queue_update_timer = None
+    _queue_process_timer = None
 
-    def __init__(self, **kwargs):
-        if 'server_address' in kwargs:
-            self.server_address = kwargs['server_address']
-        if 'server_port' in kwargs:
-            self.server_port = kwargs['server_port']
-        if 'queue_size' in kwargs:
-            self.max_queue_size = kwargs['queue_size']
-        if 'connections' in kwargs:
-            self.max_connections = kwargs['connections']
+    def __init__(self):
+        self.server_address = misc.params.address
+        self.server_port = misc.params.port
+        self.max_queue_size = misc.params.queue_size
+        self.max_connections = misc.params.connections
         debug("crawler started. Server: %s:%d, queue: %d, connections: %d" % (self.server_address, self.server_port, self.max_queue_size, self.max_connections))
 
     def is_link_crawled(self, link):
@@ -59,14 +57,9 @@ class Crawler(object):
         else:
             return False
 
-    def worker(self, link):
-        debug("crawling %s" % link.full)
+    def process_page(self, page_link, page_content):
         try:
-            if self.is_link_crawled(link):
-                return
-            urlfile = urllib2.urlopen(link.full)
-            page_content = urlfile.read()
-            page = Page(link, page_content)
+            page = Page(page_link, page_content)
             page.find_links()
             save_page(page, self.page_root)
             self.pages.append(page)
@@ -74,49 +67,93 @@ class Crawler(object):
                 self.push_link(link)
         except ValueError, error:
             debug("worker value error: %s" % error)
-        except urllib2.HTTPError, error:
-            debug("worker HTTP error: %s" % error)
-        except urllib2.URLError, error:
-            debug("worker URL error: %s" % error)
-
-    def error_handler(self, request, exc_info):
-        exc_type, ex, tb = exc_info
-        print(" ! error: %s" % ex)
-        import traceback
-        traceback.print_tb(tb)
-        raise SystemExit
+        except Exception, error:
+            debug("other error: %s" % error)
+            sys.exit(1)
 
     def push_link(self, link):
         if self.is_link_crawled(link):
-            debug("skipping already crawled link")
             return
-        req = threadpool.WorkRequest(self.worker, args=[link], exc_callback=self.error_handler)
-        self._pool.putRequest(req)
+        if len(self._pool) < self.max_connections:
+            debug("running %d of %d max connections" % (len(self._pool), self.max_connections))
+        else:
+            debug("but we have no free connections: all %d are busy" % self.max_connections)
+            self.queue.append(link) # push link back to queue
+            return
+        worker = getPage(str(link.full))
+        worker.addCallback(self.on_worker_done, worker, link)
+        worker.addErrback(self.on_worker_error, worker, link)
+        self._pool.append(worker)
 
-    def queue_get(self, num):
+    def crawl(self):
+        self._queue_update_timer = reactor.callLater(5, self.on_queue_update_timer)
+        self._queue_process_timer = reactor.callLater(10, self.on_queue_process_timer)
+        reactor.run()
+
+    def on_worker_done(self, page, worker, link):
+        debug("page successfully crawled: %s (%d bytes)" % (link.full, len(page)))
+        self.process_page(link, page)
+        self._pool.remove(worker)
+
+    def on_worker_error(self, worker, link):
+        debug("page crawling error: %s" % link)
+
+    def on_queue_update(self, protocol, reason):
+        debug("updating queue with %d items" % len(protocol.factory.items))
+        for item in protocol.factory.items:
+            for qi in self.queue:
+                if qi.full == item:
+                    break
+            else:
+                link = Link(item)
+                self.queue.append(link)
+
+    def queue_get(self):
+        num = self.max_queue_size - len(self.queue)
+        if num < 1:
+            debug("queue is full")
+            return
         debug("getting %d items from %s:%d" % (num, self.server_address, self.server_port))
-        cf = QueueClientFactory([ActionGet(num)])
+        action = ActionGet(num)
+        cf = QueueClientFactory([action])
+        cf.on_disconnect = self.on_queue_update
         reactor.connectTCP(self.server_address, self.server_port, cf)
 
-    def queue_put(self, items):
+    def queue_put(self):
+        items = [ page.link.full for page in self.pages ]
         debug("putting %d %s into server" % (len(items), "item" if len(items) == 1 else "items"))
         cf = QueueClientFactory([ActionPut(items)])
         reactor.connectTCP(self.server_address, self.server_port, cf)
 
-    def crawl(self):
-        self.queue_get(self.max_queue_size)
-        reactor.run()
+    def on_queue_update_timer(self):
+        debug("queue update timer called")
+        self._queue_update_timer = reactor.callLater(20, self.on_queue_update_timer)
+        debug("checking if %d < 10%% of %d" % (len(self.queue), self.max_queue_size))
+        if len(self.queue) < self.max_queue_size * 0.1:
+            self.queue_get()
+        if len(self.pages) > 0:#self.max_queue_size * 0.4:
+            self.queue_put()
+
+    def on_queue_process_timer(self):
+        debug("queue process timer called")
+        self._queue_process_timer = reactor.callLater(20, self.on_queue_process_timer)
+        if len(self.queue):
+            link = self.queue.pop()
+            self.push_link(link)
+        else:
+            debug("nothing to crawl")
 
 
 def put_and_exit(item):
-    crawler = Crawler(server_address=misc.params.address, server_port=misc.params.port)
-    crawler.queue_put([item])
+    cf = QueueClientFactory([ActionPut([item]), ActionClose()])
+    reactor.connectTCP(misc.params.address, misc.params.port, cf)
     reactor.run()
 
 def tests():
     test_server = '127.0.0.1'
-    crawler = Crawler(server_address=test_server, server_port=misc.params.port, queue_size=misc.params.queue_size, connections=misc.params.connections)
-    crawler.crawl()
+    cf = QueueClientFactory([ActionGet(100), ActionClose()])
+    reactor.connectTCP(test_server, misc.params.port, cf)
+    reactor.run()
 
 def main():
     usage_info = "Usage: %prog [OPTION...] --address ADDRESS [--port PORT]"
