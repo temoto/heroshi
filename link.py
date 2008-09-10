@@ -63,4 +63,3 @@ class Link(object):
             s += u' @ %s' % self.domain
         return s
 
-

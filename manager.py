@@ -1,78 +1,141 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time
-import pickle
-import subprocess
+import random
+import cPickle
+from twisted.protocols.basic import Int32StringReceiver
+from twisted.internet.protocol import ServerFactory
+from twisted.internet import reactor
+from twisted.internet.error import ConnectionDone
+
+from client_protocol import BIND_PORT, ActionGet, ActionPut, QueueClientFactory
+import misc
+from misc import debug
 
 os_path_expand = lambda p: os.path.expandvars(os.path.expanduser(p))
 
 QUEUE_PATH = os_path_expand('~/.heroshi/queue')
 MANAGER_SOCKET = os_path_expand('~/.heroshi/manager.sock')
-WORKER_EXECV = ['python', 'crawler.py']
+WORKER_BUFFER = 10
 
-crawl_queue = []
-workers = []
+class CrawlManagement(Int32StringReceiver):
+    """Twisted Protocol"""
 
-def load_queue():
-    if not os.path.exists(QUEUE_PATH):
-        return
-# !!! TEMP
-    return
-    f = open(QUEUE_PATH, 'rb')
-    for line in f:
-        queue_item = pickle.loads(line)
-        crawl_queue.append(queue_item)
-    f.close()
+    def connectionMade(self):
+        assert(hasattr(self.factory, 'crawl_queue'))
+        debug("peer connected")
 
-def save_queue():
-    path_dir = os.path.dirname(QUEUE_PATH)
-    if not os.path.isdir(path_dir):
-        os.makedirs(path_dir)
-    f = open(QUEUE_PATH, 'wb')
-    for queue_item in crawl_queue:
-        f.write(pickle.dumps(queue_item)+'\n')
-    f.close()
-
-# !!! TEMP
-def start_worker(url):
-    proc = subprocess.Popen(WORKER_EXECV + [url])
-    workers.append(proc)
-
-def run_workers(num):
-    for i in xrange(min(num, len(crawl_queue))):
-        url = crawl_queue.pop()
-        start_worker(url)
-    while crawl_queue or workers:
-        for worker in workers:
-            if worker.poll() is not None:
-                print(" * debug worker with PID %d quit with status %d" % (worker.pid, worker.returncode))
-                workers.remove(worker)
-                if crawl_queue:
-                    url = crawl_queue.pop()
-                    start_worker(url)
-                break
+    def connectionLost(self, reason):
+        if reason.check(ConnectionDone):
+            debug("peer disconnected")
         else:
-            time.sleep(1)
-    print(" * debug crawl queue is empty")
+            debug("connection with peer lost: %s" % reason)
+
+    def stringReceived(self, string):
+        debug("recieved: %s" % string)
+        try:
+            action, data = string.split('.', 1)
+            if action == 'GET':
+                num = int(data)
+                self.action_get(num)
+            elif action == 'PUT':
+                debug("received data: %s" % data)
+                items = cPickle.loads(data)
+                self.action_put(items)
+        except ValueError: # and UnpicklingError
+            debug("incorrect protocol used. Kicking peer")
+            self.transport.loseConnection()
+
+    def action_get(self, num):
+        debug("peer requested %d items, crawl queue has %d items" % (num, len(self.factory.crawl_queue)))
+        if len(self.factory.crawl_queue):
+            items = random.sample(self.factory.crawl_queue, num)
+            pickled = cPickle.dumps(items)
+            self.sendString('TAKE.' + pickled)
+        else:
+            self.sendString('EMPTY.')
+
+    def action_put(self, items):
+        debug("peer offered %d items" % len(items))
+        # TODO: better merge
+        for qi in self.factory.crawl_queue:
+            if qi in items:
+                items.remove(qi)
+        self.factory.crawl_queue += items
+        self.sendString('OK.')
+
+
+class CrawlManagementFactory(ServerFactory):
+    """Twisted Factory"""
+
+    protocol = CrawlManagement
+    crawl_queue = None
+
+    def __init__(self, crawl_queue):
+        self.crawl_queue = crawl_queue
+
+
+class CrawlQueue(object):
+    """Persistent list"""
+
+    queue = []
+    store_path = None
+
+    def __init__(self, store_path):
+        self.store_path = store_path
+        self.load_queue()
+
+    def load_queue(self):
+        if not os.path.exists(self.store_path):
+            return
+        f = open(self.store_path, 'rb')
+        self.queue = cPickle.load(f)
+        f.close()
+
+    def save_queue(self):
+        path_dir = os.path.dirname(self.store_path)
+        if not os.path.isdir(path_dir):
+            os.makedirs(path_dir)
+        f = open(self.store_path, 'wb')
+        cPickle.dump(self.queue, f)
+        f.close()
+
+    def __iter__(self):
+        return iter(self.queue)
+
+    def __getitem__(self, index):
+        return self.queue.__getitem__(index)
+
+    def __len__(self):
+        return len(self.queue)
+
+    def __add__(self, what):
+        return self.queue.__add__(what)
+
+
+class QueueManagerParameters(object):
+    """Command-line parameters"""
+    quiet = False
+    # TODO: verbose, queue location
+
+    def __init__(self, argv):
+        assert(len(argv))
+        # FIXME: use getopt
+        if "-q" in argv or "--quiet" in argv or "--silent" in argv:
+            self.quiet = True
+
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: %s NUM_WORKERS [URL ...]" % os.path.basename(sys.argv[0]))
-        exit()
-    # TODO: getopt parameters: start urls, workers count, queue location
-    num_workers = int(sys.argv[1])
-    urls = []
-    if len(sys.argv) > 2:
-        urls = sys.argv[2:]
-    load_queue()
-    for url in reversed(urls):
-        crawl_queue.insert(0, url)
+    misc.params = QueueManagerParameters(sys.argv)
     try:
-        run_workers(num_workers)
-    except KeyboardInterrupt:
-        print(" * debug ^C catched")
+        crawl_factory = CrawlManagementFactory(CrawlQueue(QUEUE_PATH))
+
+        reactor.listenTCP(BIND_PORT, crawl_factory, interface="127.0.0.1")
+        debug("Ready. Loaded queue of %d items. Accepting connections..." % len(crawl_factory.crawl_queue))
+        reactor.run()
     finally:
-        save_queue()
+        debug("Gracefully shutting down")
+        crawl_factory.crawl_queue.save_queue()
 
 if __name__ == '__main__':
     main()
