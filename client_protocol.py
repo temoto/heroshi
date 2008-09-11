@@ -34,6 +34,7 @@ class ProtocolAction(object):
     def __init__(self, action, data, on_done=None):
         """Creates new action.
         Data is ready-to-network sending string"""
+
         self.action = action
         self.data = data
         self.on_done = on_done
@@ -72,7 +73,6 @@ class ActionGet(ProtocolAction):
     num = 0
 
     def __init__(self, num, on_done=None):
-        self.action = 'GET'
         try:
             self.num = int(num)
         except:
@@ -85,11 +85,16 @@ class ActionPut(ProtocolAction):
 
     items = []
 
-    def __init__(self, items, on_done=None):
-        self.action = 'PUT'
-        self.items = items
-        pickled = cPickle.dumps(self.items)
-        super(ActionPut, self).__init__('PUT', pickled, on_done)
+    def __init__(self, **kwargs):
+        if 'items' in kwargs:
+            self.items = kwargs['items']
+            data = cPickle.dumps(self.items)
+        elif 'data' in kwargs:
+            data = kwargs['data']
+            self.items = cPickle.loads(data)
+        else:
+            raise Exception, "Incorrect usage of ActionPut"
+        super(ActionPut, self).__init__('PUT', data, kwargs.get('on_done'))
 
 
 class ActionClose(ProtocolAction):
@@ -101,22 +106,16 @@ class ActionClose(ProtocolAction):
 
 
 def read_action(s):
-    """Parses string from network and returns appropriate ActionXxx"""
+    """Parses string from network and returns appropriate ActionX"""
 
     action_id, data = s.split('.', 1)
-    action_classes_map = {
-        'GET': ActionGet,
-        'PUT': ActionPut,
-    }
-    if action_id not in action_classes_map:
+    if action_id == 'GET':
+        action = ActionGet(data)
+    elif action_id == 'PUT':
+        action = ActionPut(data=data)
+    else:
         # TODO: custom exception
         raise Exception, "Incorrect protocol used. Action %s is not recognized" % action_id
-    action_class = action_classes_map[action_id]
-    try:
-        action = action_class(action_id, data)
-    except:
-        # TODO: custom exception
-        raise Exception, "Failed to create action instance of %s" % action_class
     return action
 
 class QueueManagement(Int32StringReceiver):

@@ -122,7 +122,7 @@ class Crawler(object):
     def queue_put(self):
         items = [ page.link.full for page in self.pages ]
         debug("putting %d %s into server" % (len(items), "item" if len(items) == 1 else "items"))
-        cf = QueueClientFactory([ActionPut(items)])
+        cf = QueueClientFactory([ActionPut(items=items)])
         reactor.connectTCP(self.server_address, self.server_port, cf)
 
     def on_queue_update_timer(self):
@@ -145,7 +145,7 @@ class Crawler(object):
 
 
 def put_and_exit(item):
-    cf = QueueClientFactory([ActionPut([item]), ActionClose()])
+    cf = QueueClientFactory([ActionPut(items=[item]), ActionClose()])
     reactor.connectTCP(misc.params.address, misc.params.port, cf)
     reactor.run()
 

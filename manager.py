@@ -8,7 +8,7 @@ from twisted.internet.protocol import ServerFactory
 from twisted.internet import reactor
 from twisted.internet.error import ConnectionDone
 
-from client_protocol import BIND_PORT, ActionGet, ActionPut, QueueClientFactory
+import client_protocol
 import misc
 from misc import debug
 
@@ -34,14 +34,11 @@ class CrawlManagement(Int32StringReceiver):
     def stringReceived(self, string):
         debug("recieved: %s" % string)
         try:
-            action, data = string.split('.', 1)
-            if action == 'GET':
-                num = int(data)
-                self.action_get(num)
-            elif action == 'PUT':
-                debug("received data: %s" % data)
-                items = cPickle.loads(data)
-                self.action_put(items)
+            action = client_protocol.read_action(string)
+            if type(action) is client_protocol.ActionGet:
+                self.action_get(action.num)
+            elif type(action) is client_protocol.ActionPut:
+                self.action_put(action.items)
         except ValueError: # and UnpicklingError
             debug("incorrect protocol used. Kicking peer")
             self.transport.loseConnection()
@@ -133,9 +130,10 @@ def main():
     try:
         crawl_factory = CrawlManagementFactory(crawl_queue)
 
-        reactor.listenTCP(BIND_PORT, crawl_factory, interface="127.0.0.1")
+        reactor.listenTCP(client_protocol.BIND_PORT, crawl_factory, interface="127.0.0.1")
         debug("Ready. Loaded queue of %d items. Accepting connections..." % len(crawl_factory.crawl_queue))
         reactor.run()
+        crawl_queue.queue = crawl_factory.crawl_queue
     finally:
         debug("Gracefully shutting down")
         crawl_queue.save_queue()
