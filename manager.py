@@ -2,6 +2,7 @@
 
 import os, sys, time
 import random
+from optparse import OptionParser
 import cPickle
 from twisted.protocols.basic import Int32StringReceiver
 from twisted.internet.protocol import ServerFactory
@@ -10,7 +11,7 @@ from twisted.internet.error import ConnectionDone
 
 import client_protocol
 import misc
-from misc import debug
+from misc import HEROSHI_VERSION, debug
 
 os_path_expand = lambda p: os.path.expandvars(os.path.expanduser(p))
 
@@ -99,39 +100,27 @@ class CrawlQueue(object):
         cPickle.dump(self.queue, f)
         f.close()
 
-    def __iter__(self):
-        return iter(self.queue)
-
-    def __getitem__(self, index):
-        return self.queue.__getitem__(index)
-
-    def __len__(self):
-        return len(self.queue)
-
-    def __add__(self, what):
-        return self.queue.__add__(what)
-
-
-class QueueManagerParameters(object):
-    """Command-line parameters"""
-    quiet = False
-    # TODO: verbose, queue location
-
-    def __init__(self, argv):
-        assert(len(argv))
-        # FIXME: use getopt
-        if "-q" in argv or "--quiet" in argv or "--silent" in argv:
-            self.quiet = True
-
 
 def main():
-    misc.params = QueueManagerParameters(sys.argv)
+    usage_info = "Usage: %prog [OPTION...]"
+    version_info = "heroshi queue server %s" % HEROSHI_VERSION
+    opt_parser = OptionParser(usage_info, version=version_info)
+    opt_parser.set_defaults(verbose=False, quiet=False, address='0.0.0.0', port=client_protocol.BIND_PORT, queue_path=QUEUE_PATH)
+    opt_parser.add_option('-q', '--quiet', action="store_true", help="Be quiet, don't generate any output")
+    opt_parser.add_option('-v', '--verbose', action="store_true", help="Be verbose, print detailed information")
+    opt_parser.add_option('-a', '--address', help="Queue manager IP address", metavar="IP_ADDRESS")
+    opt_parser.add_option('-p', '--port', type="int", help="Queue manager IP port", metavar="PORT")
+    opt_parser.add_option('-Q', '--queue-path', help="Queue location", metavar="FILE")
+    # TODO: queue location
+    opt_parser.add_option('-t', '--test', action="store_true", dest="run_tests", help="Run internal tests")
+    (options, args) = opt_parser.parse_args()
+    misc.params = options
     crawl_queue = CrawlQueue(QUEUE_PATH)
     try:
         crawl_factory = CrawlManagementFactory(crawl_queue)
 
         reactor.listenTCP(client_protocol.BIND_PORT, crawl_factory, interface="127.0.0.1")
-        debug("Ready. Loaded queue of %d items. Accepting connections..." % len(crawl_factory.crawl_queue))
+        debug("Ready. Loaded queue of %d items. Accepting connections..." % len(crawl_queue.queue))
         reactor.run()
         crawl_queue.queue = crawl_factory.crawl_queue
     finally:
