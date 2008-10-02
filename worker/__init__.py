@@ -8,10 +8,10 @@ from optparse import OptionParser
 import cPickle
 import random
 from BeautifulSoup import BeautifulSoup
-from twisted.web.client import getPage
+import twisted.web.client
 from twisted.internet import reactor
 
-from client_protocol import BIND_PORT, ActionGet, ActionPut, ActionClose, QueueClientFactory
+from protocol import BIND_PORT, ProtocolMessage
 import misc
 from misc import HEROSHI_VERSION, debug
 from link import Link
@@ -80,7 +80,7 @@ class Crawler(object):
             debug("but we have no free connections: all %d are busy" % self.max_connections)
             self.queue.append(link) # push link back to queue
             return
-        worker = getPage(str(link.full))
+        worker = twisted.web.client.getPage(str(link.full))
         worker.addCallback(self.on_worker_done, worker, link)
         worker.addErrback(self.on_worker_error, worker, link)
         self._pool.append(worker)
@@ -98,9 +98,19 @@ class Crawler(object):
     def on_worker_error(self, worker, link):
         debug("page crawling error: %s" % link)
 
-    def on_queue_update(self, protocol, reason):
-        debug("updating queue with %d items" % len(protocol.factory.items))
-        for item in protocol.factory.items:
+    def on_queue_request_done(self, content):
+        debug("got answer from queue server: %s" % content)
+        # TODO: process the answer
+
+    def on_queue_request_error(self):
+        debug("queue request error")
+
+    def on_queue_update_got(self, content):
+        debug("got raw data: %s" % content)
+        message = ProtocolMessage('GET', raw=content)
+        debug("decoded data: %s" % message.data)
+        debug("updating queue with %d items" % len(message.data))
+        for item in message.data:
             for qi in self.queue:
                 if qi.full == item:
                     break
@@ -114,19 +124,21 @@ class Crawler(object):
             debug("queue is full")
             return
         debug("getting %d items from %s:%d" % (num, self.server_address, self.server_port))
-        action = ActionGet(num)
-        cf = QueueClientFactory([action])
-        cf.on_disconnect = self.on_queue_update
-        reactor.connectTCP(self.server_address, self.server_port, cf)
+        message = ProtocolMessage('GET', data=num)
+        job = twisted.web.client.getPage(
+            message.get_http_request_url(self.server_address, self.server_port))
+        job.addCallback(self.on_queue_update_got)
 
     def queue_put(self):
         items = [ page.link.full for page in self.pages ]
         debug("putting %d %s into server" % (len(items), "item" if len(items) == 1 else "items"))
-        cf = QueueClientFactory([ActionPut(items=items)])
-        reactor.connectTCP(self.server_address, self.server_port, cf)
+        message = ProtocolMessage('PUT', data=items)
+        job = twisted.web.client.getPage(
+            message.get_http_request_url(self.server_address, self.server_port))
+        job.addCallback(self.on_queue_request_done)
 
     def on_queue_update_timer(self):
-        debug("queue update timer called")
+        debug("it's queue update time!")
         self._queue_update_timer = reactor.callLater(20, self.on_queue_update_timer)
         debug("checking if %d < 10%% of %d" % (len(self.queue), self.max_queue_size))
         if len(self.queue) < self.max_queue_size * 0.1:
@@ -145,14 +157,10 @@ class Crawler(object):
 
 
 def put_and_exit(item):
-    cf = QueueClientFactory([ActionPut(items=[item]), ActionClose()])
-    reactor.connectTCP(misc.params.address, misc.params.port, cf)
-    reactor.run()
-
-def tests():
-    test_server = '127.0.0.1'
-    cf = QueueClientFactory([ActionGet(100), ActionClose()])
-    reactor.connectTCP(test_server, misc.params.port, cf)
+    message = ProtocolMessage('PUT', data=[item])
+    worker = twisted.web.client.getPage(message.get_http_request_url(misc.params.address, misc.params.port))
+    worker.addCallback(lambda page: reactor.stop())
+    worker.addErrback(lambda : reactor.stop())
     reactor.run()
 
 def main():
@@ -167,12 +175,8 @@ def main():
     opt_parser.add_option('--put', help="Put URL in server queue", metavar="URL")
     opt_parser.add_option('-a', '--address', help="Queue manager IP address", metavar="IP_ADDRESS")
     opt_parser.add_option('-p', '--port', type="int", help="Queue manager IP port. [Default = %d]" % BIND_PORT, metavar="PORT")
-    opt_parser.add_option('-t', '--test', action="store_true", dest="run_tests", help="Run internal tests")
     (options, args) = opt_parser.parse_args()
     misc.params = options
-    if options.run_tests:
-        tests()
-        sys.exit()
     if not options.address:
         print("Address is required")
         opt_parser.print_help()
