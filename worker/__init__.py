@@ -118,12 +118,12 @@ class Crawler(object):
         message = ProtocolMessage('GET', raw=content)
         debug("decoded data: %s" % message.data)
         debug("updating queue with %d items" % len(message.data))
-        for item in message.data:
+        for item_url, item_params in message.data.iteritems():
             for qi in self.queue:
-                if qi.full == item:
+                if qi.full == item_url:
                     break
             else:
-                link = Link(item)
+                link = Link(item_url, parent_link=item_params.get('parent'))
                 self.queue.append(link)
 
     def on_queue_request_error(self, error):
@@ -168,7 +168,8 @@ class Crawler(object):
             debug("nothing to crawl")
 
 
-def put_and_exit(item):
+def put_and_exit(url):
+    item = {url: {'visited': None, 'parent': None}}
     message = ProtocolMessage('PUT', data=[item])
     msg_url = message.get_http_request_url(shared.misc.params.address, shared.misc.params.port)
     worker = twisted.web.client.getPage(msg_url)
