@@ -99,14 +99,3 @@ class ProtocolMessage(object):
 
     def __repr__(self):
         return unicode(self)
-
-
-def read_message(s):
-    """Parses string from network and returns appropriate MessageProtocol"""
-
-    action, raw_data = s.split('.', 1)
-    message = ProtocolAction(action, raw=raw_data)
-    if not action in KNOWN_ACTIONS:
-        # TODO: custom exception
-        raise Exception, "Incorrect protocol used. Action %s is not recognized" % id
-    return message
