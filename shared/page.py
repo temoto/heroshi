@@ -7,11 +7,11 @@ import cPickle
 import urllib2
 from BeautifulSoup import BeautifulSoup
 
-import misc
-from misc import HEROSHI_VERSION, debug
-from link import Link
-from form import Form
-from storage import save_page
+import shared.misc
+from shared.misc import HEROSHI_VERSION, debug
+from shared.link import Link
+from shared.form import Form
+from shared.storage import save_page
 
 
 class Page(object):

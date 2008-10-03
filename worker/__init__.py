@@ -13,11 +13,11 @@ from twisted.internet import reactor
 import datetime
 
 from protocol import BIND_PORT, ProtocolMessage
-import misc
-from misc import HEROSHI_VERSION, debug
-from link import Link
-from page import Page
-from storage import save_page
+import shared.misc
+from shared.misc import HEROSHI_VERSION, debug
+from shared.link import Link
+from shared.page import Page
+from shared.storage import save_page
 
 
 def random_useragent():
@@ -45,10 +45,10 @@ class Crawler(object):
     _queue_process_timer = None
 
     def __init__(self):
-        self.server_address = misc.params.address
-        self.server_port = misc.params.port
-        self.max_queue_size = misc.params.queue_size
-        self.max_connections = misc.params.connections
+        self.server_address = shared.misc.params.address
+        self.server_port = shared.misc.params.port
+        self.max_queue_size = shared.misc.params.queue_size
+        self.max_connections = shared.misc.params.connections
         debug("crawler started. Server: %s:%d, queue: %d, connections: %d" % (self.server_address, self.server_port, self.max_queue_size, self.max_connections))
 
     def is_link_crawled(self, link):
@@ -126,8 +126,8 @@ class Crawler(object):
                 link = Link(item)
                 self.queue.append(link)
 
-    def on_queue_request_error(self):
-        debug("queue request error")
+    def on_queue_request_error(self, error):
+        debug("queue request error: %s" % error)
 
     def queue_put(self):
         def make_put_list():
@@ -170,7 +170,7 @@ class Crawler(object):
 
 def put_and_exit(item):
     message = ProtocolMessage('PUT', data=[item])
-    msg_url = message.get_http_request_url(misc.params.address, misc.params.port)
+    msg_url = message.get_http_request_url(shared.misc.params.address, shared.misc.params.port)
     worker = twisted.web.client.getPage(msg_url)
     worker.addCallback(lambda page: reactor.stop())
     worker.addErrback(lambda : reactor.stop())
@@ -189,7 +189,7 @@ def main():
     opt_parser.add_option('-a', '--address', help="Queue manager IP address", metavar="IP_ADDRESS")
     opt_parser.add_option('-p', '--port', type="int", help="Queue manager IP port. [Default = %d]" % BIND_PORT, metavar="PORT")
     (options, args) = opt_parser.parse_args()
-    misc.params = options
+    shared.misc.params = options
     if not options.address:
         print("Address is required")
         opt_parser.print_help()
@@ -202,4 +202,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

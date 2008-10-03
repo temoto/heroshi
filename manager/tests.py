@@ -3,11 +3,12 @@
 import os
 import unittest
 import urllib2
-import manager
 import cPickle
-import protocol
-import misc
 from twisted.internet.error import ConnectionDone, ConnectionLost
+
+import shared.misc
+import protocol
+import manager
 
 
 class DefaultParams(object):
@@ -18,7 +19,7 @@ class ManagerTestCase(unittest.TestCase):
     """Heroshi queue server tests"""
 
     def setUp(self):
-        misc.params = DefaultParams()
+        shared.misc.params = DefaultParams()
         pass
 
     def tearDown(self):
@@ -31,7 +32,7 @@ class ManagerTestCase(unittest.TestCase):
 
 class CrawlQueueTestCase(unittest.TestCase):
     def setUp(self):
-        misc.params = DefaultParams()
+        shared.misc.params = DefaultParams()
         self.queue_path = '/tmp/heroshi-test.queue'
 
     def tearDown(self):

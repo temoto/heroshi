@@ -23,11 +23,11 @@ from twisted.internet.error import ConnectionDone
 import urllib2
 import urllib
 
-import misc
-from misc import HEROSHI_VERSION, debug
-from link import Link
-from page import Page
-from storage import save_page
+import shared.misc
+from shared.misc import HEROSHI_VERSION, debug
+from shared.link import Link
+from shared.page import Page
+from shared.storage import save_page
 
 BIND_PORT = 15822
 KNOWN_ACTIONS = ( 'GET', 'PUT', 'QUIT', )

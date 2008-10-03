@@ -16,6 +16,7 @@ class Link(object):
     is_subdomain = False
     is_external = False
     is_secure = False
+    parent = None
 
     protocol = property(lambda self: self.is_secure and 'https' or 'http')
     full = property(lambda self: self.url if self.is_full else '%s://%s%s' % (self.protocol, self.domain, self.url))

@@ -9,8 +9,8 @@ import wsgiref.simple_server
 import urllib
 
 import protocol
-import misc
-from misc import HEROSHI_VERSION, debug
+import shared.misc
+from shared.misc import HEROSHI_VERSION, debug
 
 os_path_expand = lambda p: os.path.expandvars(os.path.expanduser(p))
 
@@ -141,10 +141,10 @@ def handle_request(environ, start_response):
 def server_run():
     global crawl_queue
 
-    crawl_queue = CrawlQueue(misc.params.queue_path)
+    crawl_queue = CrawlQueue(shared.misc.params.queue_path)
     try:
         crawl_queue.load()
-        server = WSGIServer((misc.params.address, misc.params.port), wsgiref.simple_server.WSGIRequestHandler)
+        server = WSGIServer((shared.misc.params.address, shared.misc.params.port), wsgiref.simple_server.WSGIRequestHandler)
         server.init_socket()
         server.set_app(handle_request)
         debug("Accepting connections...")
@@ -168,7 +168,7 @@ def main():
     # TODO: queue location
     opt_parser.add_option('-t', '--test', action="store_true", dest="run_tests", help="Run internal tests")
     (options, args) = opt_parser.parse_args()
-    misc.params = options
+    shared.misc.params = options
     server_run()
 
 if __name__ == '__main__':

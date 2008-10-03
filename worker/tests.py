@@ -8,9 +8,9 @@ from twisted.internet.error import ConnectionDone, ConnectionLost
 import twisted.internet
 import twisted.web.client
 
-import misc, worker, protocol, manager, shared.call_indicator
-from link import Link
-from page import Page
+import shared.misc, worker, protocol, manager, shared.call_indicator
+from shared.link import Link
+from shared.page import Page
 
 
 class TestParams(object):
@@ -36,7 +36,7 @@ class WorkerTestCase(unittest.TestCase):
     """Heroshi worker tests"""
 
     def setUp(self):
-        misc.params = TestParams()
+        shared.misc.params = TestParams()
         self.client = worker.Crawler()
         shared.call_indicator.install_simple(twisted.internet.reactor, 'run')
         shared.call_indicator.install_simple(twisted.internet.reactor, 'connectTCP')
