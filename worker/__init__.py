@@ -10,6 +10,7 @@ import random
 from BeautifulSoup import BeautifulSoup
 import twisted.web.client
 from twisted.internet import reactor
+import datetime
 
 from protocol import BIND_PORT, ProtocolMessage
 import misc
@@ -61,9 +62,11 @@ class Crawler(object):
         try:
             page = Page(page_link, page_content)
             page.find_links()
+            page.visited = datetime.datetime.now()
             save_page(page, self.page_root)
             self.pages.append(page)
             for link in page.links:
+                link.parent = page_link
                 self.push_link(link)
         except ValueError, error:
             debug("worker value error: %s" % error)
@@ -98,14 +101,19 @@ class Crawler(object):
     def on_worker_error(self, worker, link):
         debug("page crawling error: %s" % link)
 
-    def on_queue_request_done(self, content):
-        debug("got answer from queue server: %s" % content)
-        # TODO: process the answer
+    def queue_get(self):
+        num = self.max_queue_size - len(self.queue)
+        if num < 1:
+            debug("queue is full")
+            return
+        debug("getting %d items from %s:%d" % (num, self.server_address, self.server_port))
+        message = ProtocolMessage('GET', data=num)
+        job = twisted.web.client.getPage(
+            message.get_http_request_url(self.server_address, self.server_port))
+        job.addCallback(self.on_queue_get_done)
+        job.addErrback(self.on_queue_request_error)
 
-    def on_queue_request_error(self):
-        debug("queue request error")
-
-    def on_queue_update_got(self, content):
+    def on_queue_get_done(self, content):
         debug("got raw data: %s" % content)
         message = ProtocolMessage('GET', raw=content)
         debug("decoded data: %s" % message.data)
@@ -118,24 +126,28 @@ class Crawler(object):
                 link = Link(item)
                 self.queue.append(link)
 
-    def queue_get(self):
-        num = self.max_queue_size - len(self.queue)
-        if num < 1:
-            debug("queue is full")
-            return
-        debug("getting %d items from %s:%d" % (num, self.server_address, self.server_port))
-        message = ProtocolMessage('GET', data=num)
-        job = twisted.web.client.getPage(
-            message.get_http_request_url(self.server_address, self.server_port))
-        job.addCallback(self.on_queue_update_got)
+    def on_queue_request_error(self):
+        debug("queue request error")
 
     def queue_put(self):
-        items = [ page.link.full for page in self.pages ]
+        def make_put_list():
+            return [ {
+                page.link.full: {
+                    'visited': page.visited,
+                    'parent': page.link.parent,
+                }
+            } for page in self.pages ]
+        items = make_put_list()
         debug("putting %d %s into server" % (len(items), "item" if len(items) == 1 else "items"))
         message = ProtocolMessage('PUT', data=items)
         job = twisted.web.client.getPage(
             message.get_http_request_url(self.server_address, self.server_port))
-        job.addCallback(self.on_queue_request_done)
+        job.addCallback(self.on_queue_put_done)
+        job.addErrback(self.on_queue_request_error)
+
+    def on_queue_put_done(self, content):
+        debug("got answer from queue server: %s" % content)
+        # TODO: process the answer
 
     def on_queue_update_timer(self):
         debug("it's queue update time!")
@@ -158,7 +170,8 @@ class Crawler(object):
 
 def put_and_exit(item):
     message = ProtocolMessage('PUT', data=[item])
-    worker = twisted.web.client.getPage(message.get_http_request_url(misc.params.address, misc.params.port))
+    msg_url = message.get_http_request_url(misc.params.address, misc.params.port)
+    worker = twisted.web.client.getPage(msg_url)
     worker.addCallback(lambda page: reactor.stop())
     worker.addErrback(lambda : reactor.stop())
     reactor.run()

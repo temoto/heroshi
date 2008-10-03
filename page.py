@@ -23,6 +23,7 @@ class Page(object):
     text_content = u''
     links = []
     forms = []
+    visited = None
 
     def __init__(self, link, content):
         self.link = link
