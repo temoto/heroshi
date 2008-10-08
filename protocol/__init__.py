@@ -33,32 +33,6 @@ BIND_PORT = 15822
 KNOWN_ACTIONS = ( 'GET', 'PUT', 'QUIT', )
 
 
-class Event(object):
-    """Basic event object"""
-    # TODO: search for python stdlib implementations
-
-    handlers = []
-
-    def __init__(self, handler=None):
-        if handler:
-            self.handlers.append(tuple(handler, [], {}))
-
-    def add(self, handler, *args, **kwargs):
-        if not handler:
-            raise Exception, "Cannot add None to event handlers. Please specify a callable."
-        self.handlers.append(tuple([handler, args, kwargs]))
-
-    def __add__(self, handler):
-        self.add(handler)
-
-    def fire(self):
-        for handler, args, kwargs in self.handlers:
-            handler(*args, **kwargs)
-
-    def __call__(self):
-        self.fire()
-
-
 class ProtocolMessage(object):
     """Message within connection
     Could be action from client or response from server"""
