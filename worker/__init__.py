@@ -40,7 +40,7 @@ class Crawler(object):
     closed = False
     server_address = None
     server_port = 0
-    _pool = []
+    active_connections = 0
     _queue_update_timer = None
     _queue_process_timer = None
 
@@ -51,16 +51,44 @@ class Crawler(object):
         self.max_connections = shared.misc.params.connections
         debug("crawler started. Server: %s:%d, queue: %d, connections: %d" % (self.server_address, self.server_port, self.max_queue_size, self.max_connections))
 
-    def is_link_crawled(self, link):
+    def status(self):
+        return {
+            'closed': self.closed,
+            'server_address': self.server_address,
+            'server_port': self.server_port,
+            'pages_count': len(self.pages),
+            'active_connections': self.active_connections,
+            'max_connections': self.max_connections,
+            'queue_length': len(self.queue),
+            'max_queue_size': self.max_queue_size,
+            'follow_depth': self.follow_depth,
+        }
+
+    def push_link(self, link):
         for page in self.pages:
             if page.link.full == link.full:
-                return True
+                return
+        if self.active_connections < self.max_connections:
+            debug("running %d of %d max connections" % (self.active_connections, self.max_connections))
         else:
-            return False
+            debug("but we have no free connections: all %d are busy" % self.max_connections)
+            self.queue.append(link) # push link to queue for future processing
+            return
+        worker = twisted.web.client.getPage(str(link.full))
+        worker.addCallback(self.on_worker_done, worker, link)
+        worker.addErrback(self.on_worker_error, worker, link)
+        self.active_connections += 1
 
-    def process_page(self, page_link, page_content):
+    def crawl(self):
+        self._queue_update_timer = reactor.callLater(5, self.on_queue_update_timer)
+        self._queue_process_timer = reactor.callLater(10, self.on_queue_process_timer)
+        reactor.run()
+
+    def on_worker_done(self, page_content, worker, link):
+        debug("page successfully crawled: %s (%d bytes)" % (link.full, len(page_content)))
+        self.active_connections -= 1
         try:
-            page = Page(page_link, page_content)
+            page = Page(link, page_content)
             page.find_links()
             page.visited = datetime.datetime.now()
             save_page(page, self.page_root)
@@ -74,32 +102,9 @@ class Crawler(object):
             debug("other error: %s" % error)
             sys.exit(1)
 
-    def push_link(self, link):
-        if self.is_link_crawled(link):
-            return
-        if len(self._pool) < self.max_connections:
-            debug("running %d of %d max connections" % (len(self._pool), self.max_connections))
-        else:
-            debug("but we have no free connections: all %d are busy" % self.max_connections)
-            self.queue.append(link) # push link back to queue
-            return
-        worker = twisted.web.client.getPage(str(link.full))
-        worker.addCallback(self.on_worker_done, worker, link)
-        worker.addErrback(self.on_worker_error, worker, link)
-        self._pool.append(worker)
-
-    def crawl(self):
-        self._queue_update_timer = reactor.callLater(5, self.on_queue_update_timer)
-        self._queue_process_timer = reactor.callLater(10, self.on_queue_process_timer)
-        reactor.run()
-
-    def on_worker_done(self, page, worker, link):
-        debug("page successfully crawled: %s (%d bytes)" % (link.full, len(page)))
-        self.process_page(link, page)
-        self._pool.remove(worker)
-
     def on_worker_error(self, worker, link):
         debug("page crawling error: %s" % link)
+        self.active_connections -= 1
 
     def queue_get(self):
         num = self.max_queue_size - len(self.queue)
@@ -200,6 +205,7 @@ def main():
         sys.exit()
     crawler = Crawler()
     crawler.crawl()
+
 
 if __name__ == '__main__':
     main()
