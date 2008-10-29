@@ -73,3 +73,25 @@ class ProtocolMessage(object):
 
     def __repr__(self):
         return unicode(self)
+
+
+class CrawlQueueItem(object):
+    link = None
+    visited = None
+    is_given = False
+
+    def __str__(self):
+        url_part = str(self.link.full) if self.link else '(no url)'
+        visit_part = 'visited at %s' % str(self.visited) if self.visited else 'not visited'
+        given_part = 'given to worker' if self.is_given else 'not given'
+        return '<CrawlItem %s %s %s>' % (url_part, visit_part, given_part)
+
+    def __repr__(self):
+        return str(self)
+
+
+def response_ok(data):
+    return {'status': 'ok', 'data': data}
+
+def response_failure(message):
+    return {'status': 'failure', 'data': message}

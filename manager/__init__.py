@@ -20,6 +20,7 @@ WORKER_BUFFER = 10
 
 crawl_queue = None
 
+
 class CrawlQueue(object):
     """Persistent list"""
     # TODO: rewrite to shelve
@@ -66,24 +67,19 @@ class Request(object):
         return "\n".join([ "%s: %s" % attr for attr in attr_list ])
 
 
-def make_response_ok(data):
-    return {'status': 'ok', 'data': data}
-
-def make_response_failure(message):
-    return {'status': 'failure', 'data': message}
-
 def s_get(data, environ):
     global crawl_queue
 
     # TODO: url sampling
     sample_len = min(len(crawl_queue.queue), int(data))
     if sample_len:
+        choose_from = [ item for item in crawl_queue.queue if not item.is_given ]
         sampled_list = random.sample(crawl_queue.queue, sample_len)
         crawl_queue.queue = filter(lambda item: item not in sampled_list,
             crawl_queue.queue)
     else:
         sampled_list = []
-    return make_response_ok(sampled_list)
+    return protocol.response_ok(sampled_list)
 
 def s_put(data, environ):
     global crawl_queue
@@ -91,9 +87,9 @@ def s_put(data, environ):
     try:
         len(data)
     except TypeError:
-        return make_response_failure("handling action PUT. data `%s` is not list" % data)
+        return protocol.response_failure("data `%s` is not list" % data)
     crawl_queue.queue += data
-    return make_response_ok(None)
+    return protocol.response_ok(None)
 
 def parse_query(query):
     args = {}
@@ -130,9 +126,15 @@ def parse_request(environ):
     return r
 
 def handle_request(environ, start_response):
-    request = parse_request(environ)
-    content = dispatcher(request, environ)
-    start_response('200 OK', [
+    try:
+        request = parse_request(environ)
+        content = dispatcher(request, environ)
+        status = '200 OK'
+    except Exception, e:
+        print "exception %s", e
+        raise
+
+    start_response(status, [
         ('Content-Type', 'application/json'),
         ('Content-Length', str(len(content))),
         ])

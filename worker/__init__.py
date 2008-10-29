@@ -10,6 +10,7 @@ import random
 from BeautifulSoup import BeautifulSoup
 import twisted.web.client
 from twisted.internet import reactor
+from twisted.internet.error import ConnectionRefusedError
 import datetime
 
 from protocol import BIND_PORT, ProtocolMessage
@@ -20,9 +21,10 @@ from shared.page import Page
 from shared.storage import save_page
 
 
+REAL_USER_AGENT = 'HeroshiBot/%s' % HEROSHI_VERSION
+
 def random_useragent():
     USER_AGENTS = [
-        'HeroshiBot/%s' % HEROSHI_VERSION,
         'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008072820 Firefox/3.0.1',
         'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)',
         'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0',
@@ -34,7 +36,7 @@ class Crawler(object):
     max_queue_size = 0
     max_connections = 0
     queue = []
-    follow_depth = 0 # stay on root site
+    follow_depth = 0
     pages = []
     page_root = '~/.heroshi/page'
     closed = False
@@ -102,8 +104,10 @@ class Crawler(object):
             debug("other error: %s" % error)
             sys.exit(1)
 
-    def on_worker_error(self, worker, link):
-        debug("page crawling error: %s" % link)
+    def on_worker_error(self, error, worker, link):
+        debug("page crawling error: %s" % error)
+        if error is ConnectionRefused:
+            link.is_dead = True
         self.active_connections -= 1
 
     def queue_get(self):
@@ -123,7 +127,9 @@ class Crawler(object):
         message = ProtocolMessage('GET', raw=content)
         debug("decoded data: %s" % message.data)
         debug("updating queue with %d items" % len(message.data))
-        for item_url, item_params in message.data.iteritems():
+        for item in message.data:
+            item_url = item.keys()[0]
+            item_params = item.values()[0]
             for qi in self.queue:
                 if qi.full == item_url:
                     break
