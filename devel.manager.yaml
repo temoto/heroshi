@@ -1,0 +1,6 @@
+loglevel: 0
+couchdb_url: http://localhost:5984/
+db_name: heroshi
+authorized_keys:
+    - temoto-devel:slawiddawdd2y1d71txi87d1tgiu1xui1yo8d
+storage_root: ~/.heroshi/page

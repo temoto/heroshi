@@ -1,0 +1,5 @@
+loglevel: 0
+update_interval: 50
+process_interval: 10
+manager_url: http://heroshi.localhost/
+api_key: temoto-devel:slawiddawdd2y1d71txi87d1tgiu1xui1yo8d

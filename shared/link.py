@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import re, hashlib
 
 re_url_full = re.compile(r'^(https?)://.*')
@@ -50,8 +48,7 @@ class Link(object):
     def hash(self):
         if not self.domain: # whether self.full is even possible
             raise Exception, "Getting hash of relative URL is useless"
-        hasher = HASHER()
-        hasher.update(self.full)
+        hasher = HASHER(self.full)
         return hasher.hexdigest()
 
     def __unicode__(self):
@@ -63,4 +60,3 @@ class Link(object):
         if not self.is_full:
             s += u' @ %s' % self.domain
         return s
-

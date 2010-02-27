@@ -1,0 +1,7 @@
+#!/bin/bash
+
+: ${HEROSHI_CONFIG_PATH=devel.manager.yaml}
+
+export HEROSHI_CONFIG_PATH
+
+exec spawn --processes 1 --threads 1 manager.server.wsgi_app

@@ -1,18 +1,9 @@
-# -*- coding: utf-8 -*-
-
 import os
 import unittest
 import urllib2
 import cPickle
-from twisted.internet.error import ConnectionDone, ConnectionLost
 
-import shared.misc
-import protocol
 import manager
-
-
-class DefaultParams(object):
-    quiet = False
 
 
 class ManagerTestCase(unittest.TestCase):
@@ -25,14 +16,9 @@ class ManagerTestCase(unittest.TestCase):
     def tearDown(self):
         pass
 
-#     def test_connect_001(self):
-#         urllib2.urlopen
-#         pass
-
 
 class CrawlQueueTestCase(unittest.TestCase):
     def setUp(self):
-        shared.misc.params = DefaultParams()
         self.queue_path = '/tmp/heroshi-test.queue'
 
     def tearDown(self):
@@ -62,11 +48,3 @@ class CrawlQueueTestCase(unittest.TestCase):
         cq.load()
         self.assertEqual(len(cq.queue), len(items))
         os.remove(self.queue_path)
-
-
-if __name__ == '__main__':
-    suite = unittest.TestSuite()
-    loader = unittest.TestLoader()
-    suite.addTest(loader.loadTestsFromTestCase(CrawlQueueTestCase))
-    suite.addTest(loader.loadTestsFromTestCase(ManagerTestCase))
-    unittest.TextTestRunner(verbosity=2).run(suite)

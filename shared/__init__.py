@@ -1,0 +1,6 @@
+HEROSHI_NAME = "heroshi"
+HEROSHI_VERSION = '0.1'
+BIND_PORT = 15822
+REAL_USER_AGENT = 'HeroshiBot/%s' % HEROSHI_VERSION
+TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
+

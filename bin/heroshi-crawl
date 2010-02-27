@@ -1,0 +1,7 @@
+#!/bin/bash
+
+: ${HEROSHI_CONFIG_PATH=devel.worker.yaml}
+
+export HEROSHI_CONFIG_PATH
+
+exec python -m worker.cli_crawl $*
