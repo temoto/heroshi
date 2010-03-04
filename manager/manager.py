@@ -16,13 +16,8 @@ log = init_logging(level=settings.get('loglevel'))
 MAX_LIMIT = 1000
 MIN_VISIT_TIMEDELTA = datetime.timedelta(hours=6)
 
+NEW_URLS = set()
 
-@log_exceptions
-def worker_config(request):
-    return {
-            'control': api.CONTROL_RESUME,
-            'recheck-interval': 90,
-           }
 
 @log_exceptions
 def crawl_queue(request):
@@ -52,13 +47,20 @@ def crawl_queue(request):
         doc['given'] = time_now.strftime(TIME_FORMAT)
 
     claim_results = storage.update_meta(doc_list)
-    claimed_docs = [ r for r in claim_results if '_id' in r ]
+    claimed_docs = [ doc for (doc,(result,_id,_rev)) in zip(doc_list, claim_results) if result ]
 
     def make_queue_item(doc):
         filter_fields = ('url', 'headers', 'visited',)
         return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
 
     queue = [ make_queue_item(doc) for doc in claimed_docs ]
+
+    if len(queue) < limit:
+        some_new_urls = list(NEW_URLS)[:10000]
+        random.shuffle(some_new_urls)
+        random_slice = some_new_urls[:limit - len(queue)]
+        NEW_URLS.difference_update(random_slice)
+        queue.extend( {'url': url} for url in random_slice )
 
     return queue
 
@@ -69,7 +71,7 @@ def report_results(request):
     for report in items:
         links = report.pop('links', [])
         if len(links) > 1000:
-            print"........................ too many links\n",pprint.pformat(links)
+            log.info("Too many links: %d at %s", len(links), report['url'])
 
         # save reports
         if report['url']:
@@ -93,10 +95,13 @@ def report_results(request):
         links = list(set(links))
         # 2. check for existing links
         def url_filter(u):
-            return u.startswith("http") and \
-                (u.endswith("/") or u.endswith("html"))
+            ul = u.lower()
+            return ul.startswith("http") and \
+                (u.endswith("/") or ul.endswith("html") or ul.endswith("php"))
 
         links = filter(url_filter, links)
+
+        NEW_URLS.update(links)
 
         def make_new_doc(url):
             return {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}

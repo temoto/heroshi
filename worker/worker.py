@@ -2,21 +2,24 @@
 
 Gets URLs to crawl from queue server, crawls them, store and send crawl info back to queue server."""
 
-import sys
-import random
 from datetime import datetime
-import pyev as ev, signal
-import pprint
+import eventlet
+from eventlet import GreenPool, greenthread, sleep, spawn
+from eventlet.queue import Empty, Queue
+import httplib2
+import random
+import sys
 
+# from heroshi. ...
+from data import PoolMap, Link, Page
 from shared.conf import settings
 from shared.error import ApiError
-from shared.kot2 import grab_multi
-from shared.page import Page
-from shared.link import Link
 from shared import TIME_FORMAT, REAL_USER_AGENT
 from shared import api
 from shared.misc import get_logger, log_exceptions
 log = get_logger()
+
+eventlet.monkey_patch(all=False, socket=True, select=True)
 
 
 USER_AGENTS = [
@@ -31,167 +34,139 @@ def random_useragent():
 
 
 class Crawler(object):
-    max_queue_size = 0
-    max_connections = 0
-    queue = []
-    reports = []
-    page_root = '~/.heroshi/page'
-    configured = False
-    closed = False
-    server_address = None
-    _update_timer = None
-    _process_timer = None
-
-    def __init__(self, server, queue_size, max_connections):
-        self.server = server
+    def __init__(self, queue_size, max_connections):
         self.max_queue_size = queue_size
         self.max_connections = max_connections
-        log.debug("crawler started. Server: %s, max queue size: %d, connections: %d",
-                self.server_address, self.max_queue_size, self.max_connections)
 
-    def status(self):
-        return {
-            'configured': self.configured,
-            'closed': self.closed,
-            'server_address': self.server_address,
-            'report_count': len(self.reports),
-            'max_connections': self.max_connections,
-            'queue_length': len(self.queue),
-            'max_queue_size': self.max_queue_size,
-        }
+        self.queue = Queue(self.max_queue_size)
+        self.reports = []
+        self.closed = False
+        self._handler_pool = GreenPool(self.max_connections)
+        self._connections = PoolMap(httplib2.Http, pool_max_size=5, timeout=120)
+
+        log.debug("Crawler started. Max queue size: %d, connections: %d.",
+                  self.max_queue_size, self.max_connections)
 
     def crawl(self):
-        self._loop = ev.default_loop()
+        # TODO: do something special about signals?
 
-        self._sigint_watcher = ev.Signal(signal.SIGINT, self._loop, self.on_sigint)
-        self._sigint_watcher.start()
+        crawler_thread = greenthread.getcurrent()
+        def _exc_link(gt):
+            try:
+                gt.wait()
+            except Exception:
+                crawler_thread.throw(*sys.exc_info())
 
-        self._update_timer = ev.Timer(settings.update_interval, settings.update_interval, self._loop, self.on_update)
-        self._process_timer = ev.Timer(settings.process_interval, settings.process_interval, self._loop, self.on_process)
+        def qputter():
+            while True:
+                if self.queue.qsize() < self.max_queue_size:
+                    self.do_queue_get()
+                    sleep()
+                else:
+                    sleep(10)
 
-        self._configure_timer = ev.Timer(0, 0, self._loop, self.on_configure)
-        self._configure_timer.start()
+        def reporter():
+            while True:
+                if len(self.reports) > 1:
+                    self.do_report()
+                    sleep()
+                else:
+                    sleep(0.5)
 
-        self._loop.loop()
+        spawn(qputter).link(_exc_link)
+        spawn(reporter).link(_exc_link)
+
+        while not self.closed:
+            sleep()
+            # `get_nowait` will only work together with sleep(0) here
+            # because we need switches to reraise exception from `do_process`.
+            try:
+                item = self.queue.get_nowait()
+            except Empty:
+                sleep(0.01)
+                continue
+            self._handler_pool.spawn(self.do_process, item).link(_exc_link)
 
     def stop(self):
-        self._loop.unloop()
+        self.closed = True
 
-    def queue_get(self):
-        num = self.max_queue_size - len(self.queue)
-        if num < 1:
-            log.debug("  queue is full")
-            return
-        log.debug("  getting %d items from %s", num, self.server_address)
+    def do_queue_get(self):
+        log.debug("It's queue update time!")
+        num = self.max_queue_size - self.queue.qsize()
+        log.debug("  getting %d items from URL server.", num)
         try:
             new_queue = api.get_crawl_queue(self.max_queue_size)
             log.debug("  got %d items", len(new_queue))
 
-            # extend worker queue
-            # 1. update duplicate URLs
-            for new_item in new_queue:
-                for queue_item in self.queue:
-                    if queue_item['url'] == new_item['url']: # compare URLs
-                        self.queue.remove(queue_item)
-            # 2. extend queue with new items
-            self.queue.extend(new_queue)
-        except ApiError:
-            log.exception("")
+            if len(new_queue) is 0:
+                log.debug("  waiting some time before another request to URL server.")
+                sleep(10.0)
 
-    def queue_put(self):
-        try:
-            api.report_results(self.reports)
+            # extend worker queue
+            # 1. skip duplicate URLs
+            for new_item in new_queue:
+                for queue_item in self.queue.queue:
+                    if queue_item['url'] == new_item['url']: # compare URLs
+                        break
+                else:
+                    # 2. extend queue with new items
+                    self.queue.put(new_item)
+
+            # shuffle the queue so there are no long sequences of URIs on same domain
+            random.shuffle(self.queue.queue)
         except ApiError:
-            log.exception("")
+            log.exception("do_queue_get")
+            self.stop()
+
+    def do_report(self):
+        import cPickle
+        if not self.reports:
+            return
+        log.debug("Reporting %d results back to URL server. Size ~= %d KB. Connections cache: %r.",
+                  len(self.reports),
+                  len(cPickle.dumps(list(self.reports))) / 1024,
+                  self._connections)
+        try:
+            api.report_results(list(self.reports))
+        except ApiError:
+            log.exception("do_report")
         finally:
             self.reports = []
 
-    @log_exceptions
-    def on_update(self, watcher, events):
-        log.debug("it's queue update time!")
-        msg_queue = "  checking queue size %d < 10%% of max %d..." % (len(self.queue), self.max_queue_size)
-        if len(self.queue) < self.max_queue_size * 0.1:
-            msg_queue += " Queue is not full enough. Requesting more items"
-            self.queue_get()
-        log.debug(msg_queue)
-        msg_report = "  checking reports size %d > 0..." % (len(self.reports),)
-        if len(self.reports) > 0:#self.max_queue_size * 0.4:
-            msg_report += " Got enough reports. Sending"
-            self.queue_put()
-        log.debug(msg_report)
+    def do_process(self, item):
+        url = item['url']
+        report = {'url': url}
 
-    @log_exceptions
-    def on_process(self, watcher, events):
-        log.debug("it's queue process time!")
-        if len(self.queue):
-            # pop a slice out of queue
-            queue_slice = self.queue[:20] # XXX: magic number
-            del self.queue[:20] # XXX: magic number
-            log.debug("  crawling %d items: %s",
-                    len(queue_slice), pprint.pformat(queue_slice))
+        uri = httplib2.iri2uri(url)
+        (scheme, authority, _path, _query, _fragment) = httplib2.parse_uri(uri)
+        if scheme is None or authority is None:
+            log.warning("Skipping invalid URI: %s", uri)
+            return
+        conn_key = scheme+":"+authority
 
-            # convert queue slice into kot2.grab_multi URL list
-            grab_now_list = [ (item['url'], item.get('parent')) for item in queue_slice ]
-            results = grab_multi(grab_now_list)
-            log.debug("  here are results: %s", pprint.pformat(results))
-
-            def process_result(r_item):
-                url, result = r_item
-                timestamp = datetime.now().strftime(TIME_FORMAT)
-                report = {'url': url,
-                          'visited': timestamp,
-                         }
-                report.update(result.__dict__)
-                if result.result:
-                    page = Page(Link(url), result.content)
-                    page.parse()
-                    report['links'] = [ link.full for link in page.links ]
-                return report
-
-            reports = map(process_result, results.iteritems())
-
-            self.reports.extend(reports)
-        else:
-            log.debug("  nothing to crawl")
-
-    def set_configure_timer(self, after, repeat):
-        self._configure_timer.stop()
-        self._configure_timer.set(after, repeat)
-        self._configure_timer.start()
-
-    @log_exceptions
-    def on_configure(self, watcher, events):
-        log.debug("it's configure time!")
+        log.debug("Crawling: %s", url)
+        conn = self._connections.get(conn_key)
         try:
-            new_config = api.configure()
-            control = new_config.get('control')
-            recheck_interval = new_config.get('recheck-interval')
-
-            if control == api.CONTROL_SUSPEND:
-                if recheck_interval is None:
-                    log.critical("  got control: suspend without recheck-interval. Don't know what to do")
-                    self.stop()
+            response, content = conn.request(url, headers={'user-agent': REAL_USER_AGENT})
+        except Exception, e:
+            log.warning("HTTP error at %s: %s", url, str(e))
+            timestamp = datetime.now().strftime(TIME_FORMAT)
+            report['visited'] = timestamp
+            report['result'] = "HTTP Error: " + str(e)
+        else:
+            timestamp = datetime.now().strftime(TIME_FORMAT)
+            report['visited'] = timestamp
+            report['status_code'] = response.status
+            report['content'] = content
+            if response.status == 200:
+                page = Page(Link(url), content)
+                try:
+                    page.parse()
+                except Exception, e:
+                    report['result'] = "Parse Error: " + str(e)
                 else:
-                    log.info("  configured to suspend for %s seconds", recheck_interval)
-                    self._process_timer.stop()
-                    self._update_timer.stop()
-                    self.set_configure_timer(recheck_interval, 0)
-            elif control == api.CONTROL_RESUME:
-                if recheck_interval is None:
-                    log.warning("  got control: resume without recheck-interval. Set recheck-interval to default")
-                    recheck_interval = settings.default_recheck_interval
-                log.info("  configured to resume. Next configure in %s seconds", recheck_interval)
-                self._process_timer.start()
-                self._update_timer.start()
-                self.set_configure_timer(recheck_interval, 0)
-            else:
-                log.error("  unknown control value: %s", control)
-                self.stop()
-        except ApiError:
-            log.exception("on_configure")
-            self.set_configure_timer(30, 0)
+                    report['links'] = [ link.full for link in page.links ]
+        finally:
+            self._connections.put(conn_key, conn)
 
-    @log_exceptions
-    def on_sigint(self, watcher, events):
-        watcher.stop()
-        watcher.loop.unloop()
+        self.reports.append(report)

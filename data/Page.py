@@ -1,8 +1,9 @@
+# coding: utf-8
 """TODO"""
 
 from BeautifulSoup import BeautifulSoup
 
-from shared.link import Link
+from .Link import Link
 from shared.misc import get_logger
 log = get_logger()
 
@@ -25,8 +26,8 @@ class Page(object):
     def parse(self):
         soup = BeautifulSoup(self.html_content)
         self.text_content = u''.join( e for e in soup.recursiveChildGenerator() if isinstance(e, unicode) )
-        log.debug("parsed %d bytes of HTML into %d bytes of raw text",
-                len(self.html_content), len(self.text_content))
+#        log.debug("parsed %d bytes of HTML into %d bytes of raw text",
+#                len(self.html_content), len(self.text_content))
         self.find_links(soup)
 #         self.find_forms(soup)
 
@@ -49,7 +50,7 @@ class Page(object):
 #             self.forms.append(form)
 
     def __unicode__(self):
-        return "page at %s" % self.link.full
+        return u"<Page at %s>" % self.link.full
 
-    def __repr__(self):
-        return "<%s from %s>" % (self.__class__.__name__, self.link.full)
+    def __str__(self): return str(unicode(self))
+    def __repr__(self): return unicode(self)

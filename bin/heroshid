@@ -4,4 +4,4 @@
 
 export HEROSHI_CONFIG_PATH
 
-exec spawn --processes 1 --threads 1 manager.server.wsgi_app
+exec spawn --processes 1 --threads 0 manager.server.wsgi_app

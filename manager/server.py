@@ -8,7 +8,7 @@ from shared.conf import settings
 from shared import api
 from shared.misc import gzip_string, init_logging, get_logger
 from shared.wsgi import method_dispatcher
-from manager import worker_config, crawl_queue, report_results
+from manager import crawl_queue, report_results
 
 init_logging(level=settings.get('loglevel'))
 log = get_logger()
@@ -32,7 +32,6 @@ def check_auth(request):
 
 
 urls = {
-    '/worker':      method_dispatcher(get=worker_config),
     '/crawl-queue': method_dispatcher(post=crawl_queue),
     '/report':      method_dispatcher(put=report_results),
 }

@@ -1,10 +1,12 @@
 import re, hashlib
 
+
 re_url_full = re.compile(r'^(https?)://.*')
 re_url_domain = re.compile(r'^(https?)://([^/]+)(/?.*)')
 re_base_domain = re.compile(r'(ww[^\.]*\.)?(.+)')
 
 HASHER = hashlib.sha1
+
 
 class Link(object):
     url = ''
@@ -60,3 +62,6 @@ class Link(object):
         if not self.is_full:
             s += u' @ %s' % self.domain
         return s
+
+    def __str__(self): return str(unicode(self))
+    def __repr__(self): return unicode(self)
