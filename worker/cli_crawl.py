@@ -30,8 +30,11 @@ def main():
         log_level = logging.DEBUG
     init_logging(level=log_level)
 
-    crawler = Crawler(settings.manager_url, int(options.queue_size), int(options.connections))
-    crawler.crawl()
+    crawler = Crawler(int(options.queue_size), int(options.connections))
+    try:
+        crawler.crawl()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == '__main__':
