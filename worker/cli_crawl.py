@@ -11,7 +11,7 @@ def parse_params():
     usage_info = "Usage: %prog [OPTION...]"
     version_info = "Heroshi/%s" % HEROSHI_VERSION
     opt_parser = OptionParser(usage_info, version=version_info)
-    opt_parser.set_defaults(verbose=False, quiet=False, queue_size=2000, connections=250)
+    opt_parser.set_defaults(verbose=False, quiet=False, queue_size=500, connections=500)
     opt_parser.add_option('-q', '--quiet', action="store_true", help="Be quiet, don't generate any output")
     opt_parser.add_option('-v', '--verbose', action="store_true", help="Be verbose, print detailed information")
     opt_parser.add_option('-Q', '--queue-size', help="Maximum queue size. Crawler will ask queue server for this many of items. [Default = 2000]", metavar="N")
