@@ -9,20 +9,16 @@ HASHER = hashlib.sha1
 
 
 class Link(object):
-    url = ''
-    domain = ''
-    base_domain = ''
-    is_full = False
-    is_subdomain = False
-    is_external = False
-    is_secure = False
-    parent = None
-
     protocol = property(lambda self: self.is_secure and 'https' or 'http')
     full = property(lambda self: self.url if self.is_full else '%s://%s%s' % (self.protocol, self.domain, self.url))
     relative = property(lambda self: self.url if not self.is_full else 1/0) # TODO: implement full url shortener
 
     def __init__(self, url, parent_link=None):
+        self.domain = ''
+        self.base_domain = ''
+        self.is_subdomain = False
+        self.is_external = False
+
         self.url = url.lower() # lowercase is important. url regexps are case-sensitive
         self.is_secure = self.url.startswith('https')
         self.is_full = re_url_full.search(self.url) is not None

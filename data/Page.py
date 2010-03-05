@@ -11,17 +11,14 @@ log = get_logger()
 class Page(object):
     """TODO"""
 
-    link = None
-    html_content = ''
-    lang = ''
-    text_content = u''
-    links = []
-    forms = []
-    visited = None
-
     def __init__(self, link, content):
         self.link = link
         self.html_content = content
+        self.lang = ''
+        self.text_content = u''
+        self.links = []
+        self.forms = []
+        self.visited = None
 
     def parse(self):
         soup = BeautifulSoup(self.html_content)
