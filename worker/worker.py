@@ -39,7 +39,6 @@ class Crawler(object):
         self.max_connections = max_connections
 
         self.queue = Queue(self.max_queue_size)
-        self.reports = []
         self.closed = False
         self._handler_pool = GreenPool(self.max_connections)
         self._connections = PoolMap(httplib2.Http, pool_max_size=5, timeout=120)
@@ -65,16 +64,7 @@ class Crawler(object):
                 else:
                     sleep(10)
 
-        def reporter():
-            while True:
-                if len(self.reports) > 1:
-                    self.do_report()
-                    sleep()
-                else:
-                    sleep(0.5)
-
         spawn(qputter).link(_exc_link)
-        spawn(reporter).link(_exc_link)
 
         while not self.closed:
             sleep()
@@ -118,20 +108,17 @@ class Crawler(object):
             log.exception("do_queue_get")
             self.stop()
 
-    def do_report(self):
+    def report_item(self, item):
         import cPickle
-        if not self.reports:
-            return
-        log.debug("Reporting %d results back to URL server. Size ~= %d KB. Connections cache: %r.",
-                  len(self.reports),
-                  len(cPickle.dumps(list(self.reports))) / 1024,
+        pickled = cPickle.dumps(item)
+        log.debug("Reporting %s results back to URL server. Size ~= %d KB. Connections cache: %r.",
+                  item['url'],
+                  len(pickled) / 1024,
                   self._connections)
         try:
-            api.report_results(list(self.reports))
+            api.report_results( [item] )
         except ApiError:
-            log.exception("do_report")
-        finally:
-            self.reports = []
+            log.exception("report_item")
 
     def do_process(self, item):
         url = item['url']
@@ -169,4 +156,4 @@ class Crawler(object):
         finally:
             self._connections.put(conn_key, conn)
 
-        self.reports.append(report)
+        self.report_item(report)
