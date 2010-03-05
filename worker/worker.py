@@ -134,6 +134,8 @@ class Crawler(object):
         log.debug("Crawling: %s", url)
         try:
             response, content = conn.request(url, headers={'user-agent': REAL_USER_AGENT})
+        except KeyboardInterrupt:
+            raise
         except socket.timeout:
             log.info(u"Socket timeout at %s", url)
             report['result'] = u"Socket timeout"
@@ -147,6 +149,8 @@ class Crawler(object):
                 page = Page(Link(url), content)
                 try:
                     page.parse()
+                except KeyboardInterrupt:
+                    raise
                 except Exception, e:
                     report['result'] = "Parse Error: " + str(e)
                 else:
