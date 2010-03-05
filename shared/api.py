@@ -2,11 +2,15 @@ import cjson
 import httplib2
 from urllib import urlencode
 
+from data import FactoryPool
 from shared import REAL_USER_AGENT
 from shared.conf import settings
 from shared.error import ApiError
 from shared.misc import get_logger
 log = get_logger()
+
+
+manager_connections = FactoryPool( (httplib2.Http, (), {}), max_size=2)
 
 
 def request_manager(resource, method, data=None, headers=None):
@@ -23,8 +27,11 @@ def request_manager(resource, method, data=None, headers=None):
     url = base_url.strip('/') + resource
 
     # make request
-    http = httplib2.Http()
-    response, content = http.request(url, method, body=data, headers=use_headers)
+    http = manager_connections.get()
+    try:
+        response, content = http.request(url, method, body=data, headers=use_headers)
+    finally:
+        manager_connections.put(http)
 
     if not (200 <= response.status < 300):
         raise ApiError("non-ok-result. Code: %s" % response.status)
