@@ -67,5 +67,5 @@ def query_meta_by_url_one(url):
     results = query_meta_by_url(url, 1)
     return results[0] if results else None
 
-def query_meta_not_given(limit=None):
-    return _query_meta_view("_design/queue/_view/not-given", limit)
+def query_meta_new(limit=None):
+    return _query_meta_view("_design/queue/_view/new", limit, stale='ok')

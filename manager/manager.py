@@ -28,7 +28,7 @@ def crawl_queue(request):
     time_now = datetime.datetime.now()
 
     # TODO: make it faster
-    doc_list = storage.query_meta_not_given(MAX_LIMIT)
+    doc_list = storage.query_meta_new(MAX_LIMIT)
 
     def is_old(doc):
         visited_str = doc['visited']
