@@ -139,12 +139,8 @@ class Crawler(object):
             report['result'] = u"Socket timeout"
         except Exception, e:
             log.warning("HTTP error at %s: %s", url, str(e))
-            timestamp = datetime.now().strftime(TIME_FORMAT)
-            report['visited'] = timestamp
             report['result'] = "HTTP Error: " + str(e)
         else:
-            timestamp = datetime.now().strftime(TIME_FORMAT)
-            report['visited'] = timestamp
             report['status_code'] = response.status
             report['content'] = content
             if response.status == 200:
@@ -158,4 +154,6 @@ class Crawler(object):
         finally:
             self._connections.put(conn_key, conn)
 
+        timestamp = datetime.now().strftime(TIME_FORMAT)
+        report['visited'] = timestamp
         self.report_item(report)
