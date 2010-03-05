@@ -5,7 +5,6 @@ from base64 import b64encode
 import hashlib
 
 from shared.conf import settings
-from shared import api
 from shared.misc import gzip_string, init_logging, get_logger
 from shared.wsgi import method_dispatcher
 from manager import crawl_queue, report_results

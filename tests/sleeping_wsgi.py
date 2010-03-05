@@ -1,4 +1,4 @@
-from eventlet import listen, sleep, spawn, wsgi
+from eventlet import listen, sleep, wsgi
 import random
 import webob
 

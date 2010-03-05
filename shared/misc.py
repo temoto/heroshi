@@ -41,6 +41,6 @@ def log_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except Exception:
+        except Exception: # pylint: disable-msg=W0703
             get_logger().exception("")
     return wrapper

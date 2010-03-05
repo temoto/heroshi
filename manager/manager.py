@@ -2,14 +2,11 @@ import cjson
 import datetime
 import dateutil.parser
 import random
-import time
-import pprint
 
-from shared import api
 from shared import storage
 from shared import TIME_FORMAT
 from shared.conf import settings
-from shared.misc import os_path_expand, init_logging, log_exceptions
+from shared.misc import init_logging, log_exceptions
 log = init_logging(level=settings.get('loglevel'))
 
 

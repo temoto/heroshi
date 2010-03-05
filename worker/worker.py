@@ -16,7 +16,7 @@ from shared.conf import settings
 from shared.error import ApiError
 from shared import TIME_FORMAT, REAL_USER_AGENT
 from shared import api
-from shared.misc import get_logger, log_exceptions
+from shared.misc import get_logger
 log = get_logger()
 
 eventlet.monkey_patch(all=False, socket=True, select=True)

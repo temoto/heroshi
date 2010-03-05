@@ -2,7 +2,6 @@ from __future__ import with_statement
 import os
 import hashlib
 import couchdb.client
-import pprint
 
 from shared.conf import settings
 from shared.misc import os_path_expand, get_logger

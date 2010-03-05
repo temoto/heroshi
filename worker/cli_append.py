@@ -1,4 +1,3 @@
-import sys
 from optparse import OptionParser
 
 from shared import HEROSHI_VERSION
