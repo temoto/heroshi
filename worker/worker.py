@@ -84,7 +84,7 @@ class Crawler(object):
         num = self.max_queue_size - self.queue.qsize()
         log.debug("  getting %d items from URL server.", num)
         try:
-            new_queue = api.get_crawl_queue(self.max_queue_size)
+            new_queue = api.get_crawl_queue(num)
             log.debug("  got %d items", len(new_queue))
 
             if len(new_queue) is 0:
