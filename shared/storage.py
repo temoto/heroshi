@@ -2,6 +2,7 @@ from __future__ import with_statement
 import os
 import hashlib
 import couchdb.client
+import random
 
 from shared.conf import settings
 from shared.misc import os_path_expand, get_logger
@@ -66,5 +67,5 @@ def query_meta_by_url_one(url):
     results = query_meta_by_url(url, 1)
     return results[0] if results else None
 
-def query_meta_new(limit=None):
-    return _query_meta_view("_design/queue/_view/new", limit, stale='ok')
+def query_meta_new_random(limit=None):
+    return _query_meta_view("_design/queue/_view/new-random", limit, stale='ok', startkey=random.random())
