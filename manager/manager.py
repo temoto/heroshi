@@ -12,8 +12,6 @@ log = init_logging(level=settings.get('loglevel'))
 MAX_LIMIT = 1000
 MIN_VISIT_TIMEDELTA = datetime.timedelta(hours=6)
 
-NEW_URLS = set()
-
 
 @log_exceptions
 def crawl_queue(request):
@@ -44,14 +42,6 @@ def crawl_queue(request):
         return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
 
     queue = map(make_queue_item, doc_list)
-
-    if len(queue) < limit:
-        some_new_urls = list(NEW_URLS)[:10000]
-        random.shuffle(some_new_urls)
-        random_slice = some_new_urls[:limit - len(queue)]
-        NEW_URLS.difference_update(random_slice)
-        queue.extend( {'url': url} for url in random_slice )
-
     return queue
 
 @log_exceptions
@@ -89,8 +79,6 @@ def report_results(request):
                 (u.endswith("/") or ul.endswith("html") or ul.endswith("php"))
 
         links = filter(url_filter, links)
-
-        NEW_URLS.update(links)
 
         def make_new_doc(url):
             return {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
