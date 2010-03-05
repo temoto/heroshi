@@ -1,4 +1,5 @@
 loglevel: 0
+socket_timeout: 60
 update_interval: 50
 process_interval: 10
 manager_url: http://heroshi.localhost/

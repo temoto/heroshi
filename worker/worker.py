@@ -7,8 +7,7 @@ import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib2
-import random
-import sys
+import random, socket, sys
 
 # from heroshi. ...
 from data import PoolMap, Link, Page
@@ -131,10 +130,13 @@ class Crawler(object):
             return
         conn_key = scheme+":"+authority
 
+        conn = self._connections.get(conn_key, timeout=settings.socket_timeout)
         log.debug("Crawling: %s", url)
-        conn = self._connections.get(conn_key)
         try:
             response, content = conn.request(url, headers={'user-agent': REAL_USER_AGENT})
+        except socket.timeout:
+            log.info(u"Socket timeout at %s", url)
+            report['result'] = u"Socket timeout"
         except Exception, e:
             log.warning("HTTP error at %s: %s", url, str(e))
             timestamp = datetime.now().strftime(TIME_FORMAT)
