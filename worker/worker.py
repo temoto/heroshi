@@ -61,7 +61,7 @@ class Crawler(object):
                     self.do_queue_get()
                     sleep()
                 else:
-                    sleep(10)
+                    sleep(settings.full_queue_pause)
 
         spawn(qputter).link(_exc_link)
 
