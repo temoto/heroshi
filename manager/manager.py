@@ -4,7 +4,6 @@ import dateutil.parser
 import random
 
 from shared import storage
-from shared import TIME_FORMAT
 from shared.conf import settings
 from shared.misc import init_logging, log_exceptions
 log = init_logging(level=settings.get('loglevel'))
@@ -40,17 +39,11 @@ def crawl_queue(request):
     random.shuffle(doc_list)
     doc_list = doc_list[:limit]
 
-    for doc in doc_list:
-        doc['given'] = time_now.strftime(TIME_FORMAT)
-
-    claim_results = storage.update_meta(doc_list)
-    claimed_docs = [ doc for (doc,(result,_id,_rev)) in zip(doc_list, claim_results) if result ]
-
     def make_queue_item(doc):
         filter_fields = ('url', 'headers', 'visited',)
         return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
 
-    queue = [ make_queue_item(doc) for doc in claimed_docs ]
+    queue = map(make_queue_item, doc_list)
 
     if len(queue) < limit:
         some_new_urls = list(NEW_URLS)[:10000]
@@ -78,7 +71,6 @@ def report_results(request):
             doc = storage.query_meta_by_url_one(report['url'])
             if doc is not None:
                 doc.update(report)
-                doc['given'] = None
                 doc['links_count'] = len(links)
                 if not storage.save_meta(doc, raise_conflict=False):
                     continue
