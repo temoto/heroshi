@@ -110,8 +110,8 @@ class Crawler(object):
     def report_item(self, item):
         import cPickle
         pickled = cPickle.dumps(item)
-        log.debug("Reporting %s results back to URL server. Size ~= %d KB. Connections cache: %r.",
-                  item['url'],
+        log.debug(u"Reporting %s results back to URL server. Size ~= %d KB. Connections cache: %r.",
+                  unicode(item['url']),
                   len(pickled) / 1024,
                   self._connections)
         try:
@@ -126,12 +126,12 @@ class Crawler(object):
         uri = httplib2.iri2uri(url)
         (scheme, authority, _path, _query, _fragment) = httplib2.parse_uri(uri)
         if scheme is None or authority is None:
-            log.warning("Skipping invalid URI: %s", uri)
+            log.warning(u"Skipping invalid URI: %s", unicode(uri))
             return
         conn_key = scheme+":"+authority
 
+        log.debug(u"Crawling: %s", url)
         conn = self._connections.get(conn_key, timeout=settings.socket_timeout)
-        log.debug("Crawling: %s", url)
         try:
             response, content = conn.request(url, headers={'user-agent': REAL_USER_AGENT})
         except KeyboardInterrupt:
@@ -140,8 +140,8 @@ class Crawler(object):
             log.info(u"Socket timeout at %s", url)
             report['result'] = u"Socket timeout"
         except Exception, e:
-            log.warning("HTTP error at %s: %s", url, str(e))
-            report['result'] = "HTTP Error: " + str(e)
+            log.warning(u"HTTP error at %s: %s", url, str(e))
+            report['result'] = u"HTTP Error: " + unicode(e)
         else:
             report['status_code'] = response.status
             report['content'] = content
@@ -152,7 +152,7 @@ class Crawler(object):
                 except KeyboardInterrupt:
                     raise
                 except Exception, e:
-                    report['result'] = "Parse Error: " + str(e)
+                    report['result'] = u"Parse Error: " + unicode(e)
                 else:
                     report['links'] = [ link.full for link in page.links ]
         finally:
