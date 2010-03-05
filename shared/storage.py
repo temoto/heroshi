@@ -1,7 +1,7 @@
 from __future__ import with_statement
-import os
-import hashlib
 import couchdb.client
+import hashlib
+import os
 import random
 
 from shared.conf import settings
