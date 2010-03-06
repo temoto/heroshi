@@ -3,9 +3,9 @@ import datetime
 import dateutil.parser
 import random
 
-from shared import storage
-from shared.conf import settings
-from shared.misc import init_logging, log_exceptions
+from heroshi import storage
+from heroshi.conf import settings
+from heroshi.misc import init_logging, log_exceptions
 log = init_logging(level=settings.get('loglevel'))
 
 

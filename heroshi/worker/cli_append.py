@@ -1,7 +1,7 @@
 from optparse import OptionParser
 
-from shared import HEROSHI_VERSION
-from shared import api
+from heroshi import HEROSHI_VERSION
+from heroshi import api
 
 
 def parse_params():

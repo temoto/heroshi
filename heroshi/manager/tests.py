@@ -1,6 +1,5 @@
 import os
 import unittest
-import urllib2
 import cPickle
 
 from . import manager
@@ -10,7 +9,6 @@ class ManagerTestCase(unittest.TestCase):
     """Heroshi queue server tests"""
 
     def setUp(self):
-        shared.misc.params = DefaultParams()
         pass
 
     def tearDown(self):

@@ -4,4 +4,4 @@
 
 export HEROSHI_CONFIG_PATH
 
-exec python -m worker.cli_crawl $*
+exec python -m heroshi.worker.cli_crawl $*

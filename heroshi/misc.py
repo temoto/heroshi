@@ -1,6 +1,6 @@
 import os, logging
 
-from shared import HEROSHI_NAME
+from heroshi import HEROSHI_NAME
 
 
 # From http://www.xhaus.com/alan/python/httpcomp.html#gzip

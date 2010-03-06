@@ -1,13 +1,9 @@
 import os
 import unittest
-import urllib2
 import cPickle
 
-import shared.kot2
-import shared.call_indicator
-from .worker import Crawler
-from data import Link, Page
-from shared import api
+from heroshi.worker import Crawler
+from heroshi.data import Link, Page
 
 
 class WorkerTestCase(unittest.TestCase):

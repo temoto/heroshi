@@ -4,9 +4,9 @@ import webob.exc
 from base64 import b64encode
 import hashlib
 
-from shared.conf import settings
-from shared.misc import gzip_string, init_logging, get_logger
-from shared.wsgi import method_dispatcher
+from heroshi.conf import settings
+from heroshi.misc import gzip_string, init_logging, get_logger
+from heroshi.wsgi import method_dispatcher
 from .manager import crawl_queue, report_result
 
 init_logging(level=settings.get('loglevel'))

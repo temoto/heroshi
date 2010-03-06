@@ -1,9 +1,9 @@
 import logging
 from optparse import OptionParser
 
-from shared import HEROSHI_VERSION
-from shared.misc import init_logging
-from shared.conf import settings
+from heroshi import HEROSHI_VERSION
+from heroshi.misc import init_logging
+from heroshi.conf import settings
 from .worker import Crawler
 
 

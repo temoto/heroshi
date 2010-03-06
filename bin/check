@@ -14,7 +14,7 @@ while true; do
 done
 
 nose_flags=""
-if [ $cover ];            then nose_flags+=" --with-coverage --cover-html-dir=tmp-cover-html --cover-erase --cover-html --cover-package=data --cover-package=manager --cover-package=shared --cover-package=worker "; fi
+if [ $cover ];            then nose_flags+=" --with-coverage --cover-html-dir=tmp-cover-html --cover-erase --cover-html --cover-package=heroshi --cover-package=tests "; fi
 if [ ! $capture ];        then nose_flags+=" --nocapture "; fi
 if [ ! $log_capture ];    then nose_flags+=" --nologcapture "; fi
 
@@ -22,5 +22,5 @@ export PYTHONPATH=.:$PYTHONPATH
 
 $PYTHON $(which nosetests) $nose_flags
 pylint_cmd="$PYTHON $(which pylint) --disable-msg-cat=C,R -f colorized"
-find . -name '*.py' | sort | xargs $pylint_cmd
+find heroshi tests -name '*.py' | sort | xargs $pylint_cmd
 if [ $cover ];            then find ./ -name '*,cover' -exec rm "{}" \;; fi

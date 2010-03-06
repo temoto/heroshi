@@ -4,8 +4,8 @@ import hashlib
 import os
 import random
 
-from shared.conf import settings
-from shared.misc import os_path_expand, get_logger
+from heroshi.conf import settings
+from heroshi.misc import os_path_expand, get_logger
 log = get_logger()
 
 

@@ -9,13 +9,12 @@ from eventlet.queue import Empty, Queue
 import httplib2
 import random, socket, sys
 
-# from heroshi. ...
-from data import PoolMap, Link, Page
-from shared.conf import settings
-from shared.error import ApiError
-from shared import TIME_FORMAT, REAL_USER_AGENT
-from shared import api
-from shared.misc import get_logger
+from heroshi.data import PoolMap, Link, Page
+from heroshi.conf import settings
+from heroshi.error import ApiError
+from heroshi import TIME_FORMAT, REAL_USER_AGENT
+from heroshi import api
+from heroshi.misc import get_logger
 log = get_logger()
 
 eventlet.monkey_patch(all=False, socket=True, select=True)

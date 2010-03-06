@@ -9,7 +9,7 @@ from __future__ import with_statement
 import os
 import yaml
 
-from .error import ConfigurationError, MissingOption
+from heroshi.error import ConfigurationError, MissingOption
 
 
 ENVIRON_KEY = "HEROSHI_CONFIG_PATH"

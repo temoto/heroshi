@@ -3,11 +3,11 @@ import httplib2
 import socket
 from urllib import urlencode
 
-from data import FactoryPool
-from shared import REAL_USER_AGENT
-from shared.conf import settings
-from shared.error import ApiError
-from shared.misc import get_logger
+from heroshi.data import FactoryPool
+from heroshi import REAL_USER_AGENT
+from heroshi.conf import settings
+from heroshi.error import ApiError
+from heroshi.misc import get_logger
 log = get_logger()
 
 

@@ -3,8 +3,8 @@
 
 from BeautifulSoup import BeautifulSoup
 
-from .Link import Link
-from shared.misc import get_logger
+from heroshi.data import Link
+from heroshi.misc import get_logger
 log = get_logger()
 
 
