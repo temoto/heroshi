@@ -87,7 +87,7 @@ class Crawler(object):
             new_queue = api.get_crawl_queue(num)
             log.debug("  got %d items", len(new_queue))
 
-            if len(new_queue) is 0:
+            if len(new_queue) == 0:
                 log.debug("  waiting some time before another request to URL server.")
                 sleep(10.0)
 
