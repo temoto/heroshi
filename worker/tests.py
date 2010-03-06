@@ -6,8 +6,8 @@ import cPickle
 import shared.kot2
 import shared.call_indicator
 from .worker import Crawler
-from shared.link import Link
-from shared.page import Page
+from data import Link, Page
+from shared import api
 
 
 class WorkerTestCase(unittest.TestCase):
