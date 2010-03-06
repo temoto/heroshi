@@ -1,1 +1,3 @@
-from worker import *
+from .worker import Crawler
+
+__all__ = ['Crawler']

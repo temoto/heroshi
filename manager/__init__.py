@@ -1,1 +1,3 @@
-from manager import *
+from . import server
+
+__all__ = ['server']

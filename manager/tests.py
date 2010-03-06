@@ -3,7 +3,7 @@ import unittest
 import urllib2
 import cPickle
 
-import manager
+from . import manager
 
 
 class ManagerTestCase(unittest.TestCase):

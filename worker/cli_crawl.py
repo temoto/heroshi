@@ -4,7 +4,7 @@ from optparse import OptionParser
 from shared import HEROSHI_VERSION
 from shared.misc import init_logging
 from shared.conf import settings
-from worker import Crawler
+from .worker import Crawler
 
 
 def parse_params():
