@@ -13,9 +13,8 @@ from heroshi.data import PoolMap, Link, Page
 from heroshi.conf import settings
 from heroshi.error import ApiError
 from heroshi import TIME_FORMAT
-from heroshi import api
-from heroshi.misc import get_logger
-log = get_logger()
+from heroshi import api, misc
+log = misc.get_logger("worker.Crawler")
 
 eventlet.monkey_patch(all=False, socket=True, select=True)
 

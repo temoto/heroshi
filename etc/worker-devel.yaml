@@ -1,4 +1,5 @@
-loglevel: 0
+log:
+    level: 0
 
 identity:
     user_agent: "HeroshiBot/0.3 (+http://github.com/temoto/heroshi; temotor@gmail.com)"

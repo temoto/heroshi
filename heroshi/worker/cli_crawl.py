@@ -2,7 +2,7 @@ import logging
 from optparse import OptionParser
 
 import heroshi
-from heroshi.misc import init_logging
+from heroshi.misc import update_loggers_level
 from heroshi.conf import settings
 from .worker import Crawler
 
@@ -23,12 +23,10 @@ def main():
     (options, _args) = parse_params()
 
     # set up logging
-    log_level = settings.get('loglevel')
     if options.quiet:
-        log_level = logging.CRITICAL
+        update_loggers_level(logging.CRITICAL)
     elif options.verbose:
-        log_level = logging.DEBUG
-    init_logging(level=log_level)
+        update_loggers_level(logging.DEBUG)
 
     crawler = Crawler(int(options.queue_size), int(options.connections))
     try:

@@ -7,7 +7,7 @@ from heroshi.data import FactoryPool
 from heroshi.conf import settings
 from heroshi.error import ApiError
 from heroshi.misc import get_logger
-log = get_logger()
+log = get_logger("api")
 
 
 manager_connections = FactoryPool( (httplib2.Http, (), {'timeout': 20}), max_size=2)

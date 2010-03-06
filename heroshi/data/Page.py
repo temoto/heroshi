@@ -5,7 +5,7 @@ from BeautifulSoup import BeautifulSoup
 
 from heroshi.data import Link
 from heroshi.misc import get_logger
-log = get_logger()
+log = get_logger("data.Page")
 
 
 class Page(object):

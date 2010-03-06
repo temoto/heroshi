@@ -5,8 +5,8 @@ import random
 
 from heroshi import storage
 from heroshi.conf import settings
-from heroshi.misc import init_logging, log_exceptions
-log = init_logging(level=settings.get('loglevel'))
+from heroshi.misc import get_logger, log_exceptions
+log = get_logger("manager")
 
 
 MAX_LIMIT = 1000

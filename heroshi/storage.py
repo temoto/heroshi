@@ -6,7 +6,7 @@ import random
 
 from heroshi.conf import settings
 from heroshi.misc import os_path_expand, get_logger
-log = get_logger()
+log = get_logger("storage")
 
 
 def get_hash_path(root, string):
