@@ -6,20 +6,20 @@ class Error(Exception):
 
     def __init__(self, msg=None):
         self.msg = msg
-
-    def __str__(self):
-        return str(self.msg)
+        super(Error, self).__init__()
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return u"<%s %s>" % (self.__class__.__name__, unicode(self.msg))
+
+    def __str__(self):
+        return str(unicode(self))
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, str(self))
+        return unicode(self)
 
 
 class ConfigurationError(Error):
     """Base class for errors with server config."""
-
     pass
 
 
