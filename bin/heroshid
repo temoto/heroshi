@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${HEROSHI_CONFIG_PATH=devel.manager.yaml}
+: ${HEROSHI_CONFIG_PATH=etc/manager-devel.yaml}
 
 export HEROSHI_CONFIG_PATH
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${HEROSHI_CONFIG_PATH=devel.worker.yaml}
+: ${HEROSHI_CONFIG_PATH=etc/worker-devel.yaml}
 
 export HEROSHI_CONFIG_PATH
 

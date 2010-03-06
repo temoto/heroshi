@@ -1,4 +1,5 @@
 loglevel: 0
+
 couchdb_url: http://localhost:5984/
 db_name: heroshi
 authorized_keys:
