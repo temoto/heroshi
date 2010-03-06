@@ -1,4 +1,8 @@
 loglevel: 0
+
+identity:
+    user_agent: "HeroshiBot/0.3 (+http://github.com/temoto/heroshi; temotor@gmail.com)"
+
 full_queue_pause: 10
 socket_timeout: 60
 manager_url: http://heroshi.localhost/

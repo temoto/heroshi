@@ -1,12 +1,12 @@
 from optparse import OptionParser
 
-from heroshi import HEROSHI_VERSION
+import heroshi
 from heroshi import api
 
 
 def parse_params():
     usage_info = "Usage: %prog [OPTION...] ITEM-URL..."
-    version_info = "Heroshi/%s" % HEROSHI_VERSION
+    version_info = "Heroshi/%s" % heroshi.__version__
     opt_parser = OptionParser(usage_info, version=version_info)
     opt_parser.set_defaults(verbose=False, quiet=False)
     opt_parser.add_option('-q', '--quiet', action="store_true", help="Be quiet, don't generate any output")

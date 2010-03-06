@@ -4,7 +4,6 @@ import socket
 from urllib import urlencode
 
 from heroshi.data import FactoryPool
-from heroshi import REAL_USER_AGENT
 from heroshi.conf import settings
 from heroshi.error import ApiError
 from heroshi.misc import get_logger
@@ -16,7 +15,7 @@ manager_connections = FactoryPool( (httplib2.Http, (), {'timeout': 20}), max_siz
 
 def request_manager(resource, method, data=None, headers=None):
     use_headers = {
-        'User-Agent': REAL_USER_AGENT,
+        'User-Agent': settings.identity['user_agent'],
         'X-Heroshi-Auth': settings.api_key,
         'Expect': '', # a try to fix result: 100 not-ok problem
     }

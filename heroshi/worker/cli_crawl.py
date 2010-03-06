@@ -1,7 +1,7 @@
 import logging
 from optparse import OptionParser
 
-from heroshi import HEROSHI_VERSION
+import heroshi
 from heroshi.misc import init_logging
 from heroshi.conf import settings
 from .worker import Crawler
@@ -9,7 +9,7 @@ from .worker import Crawler
 
 def parse_params():
     usage_info = "Usage: %prog [OPTION...]"
-    version_info = "Heroshi/%s" % HEROSHI_VERSION
+    version_info = "Heroshi/%s" % heroshi.__version__
     opt_parser = OptionParser(usage_info, version=version_info)
     opt_parser.set_defaults(verbose=False, quiet=False, queue_size=500, connections=500)
     opt_parser.add_option('-q', '--quiet', action="store_true", help="Be quiet, don't generate any output")

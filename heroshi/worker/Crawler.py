@@ -12,7 +12,7 @@ import random, socket, sys
 from heroshi.data import PoolMap, Link, Page
 from heroshi.conf import settings
 from heroshi.error import ApiError
-from heroshi import TIME_FORMAT, REAL_USER_AGENT
+from heroshi import TIME_FORMAT
 from heroshi import api
 from heroshi.misc import get_logger
 log = get_logger()
@@ -121,7 +121,7 @@ class Crawler(object):
         log.debug(u"Crawling: %s", url)
         conn = self._connections.get(conn_key, timeout=settings.socket_timeout)
         try:
-            response, content = conn.request(url, headers={'user-agent': REAL_USER_AGENT})
+            response, content = conn.request(url, headers={'user-agent': settings.identity['user_agent']})
         except KeyboardInterrupt:
             raise
         except socket.timeout:

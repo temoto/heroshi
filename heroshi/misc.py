@@ -1,6 +1,5 @@
 import os, logging
 
-from heroshi import HEROSHI_NAME
 
 
 # From http://www.xhaus.com/alan/python/httpcomp.html#gzip
@@ -21,7 +20,7 @@ def os_path_expand(p):
     return os.path.expandvars(os.path.expanduser(p))
 
 def get_logger():
-    return logging.getLogger(HEROSHI_NAME)
+    return logging.getLogger("heroshi")
 
 def init_logging(syslog_address='/dev/log', level=None):
     from logging.handlers import SysLogHandler
