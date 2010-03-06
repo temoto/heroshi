@@ -8,7 +8,6 @@ import shared.call_indicator
 from .worker import Crawler
 from shared.link import Link
 from shared.page import Page
-from shared import BIND_PORT
 
 
 class WorkerTestCase(unittest.TestCase):
@@ -16,7 +15,6 @@ class WorkerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.client = Crawler(
-                server=('localhost', BIND_PORT),
                 queue_size=2000,
                 max_connections=20,
                 )
