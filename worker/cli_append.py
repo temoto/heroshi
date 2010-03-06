@@ -15,7 +15,7 @@ def parse_params():
     return options, args
 
 def main():
-    options, args = parse_params()
+    _options, args = parse_params()
 
     item = {'url': None, 'links': args}
     api.report_result(item)
