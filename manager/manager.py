@@ -45,45 +45,44 @@ def crawl_queue(request):
     return queue
 
 @log_exceptions
-def report_results(request):
-    items = cjson.decode(request.body)
+def report_result(request):
+    report = cjson.decode(request.body)
 
-    for report in items:
-        links = report.pop('links', [])
-        if len(links) > 1000:
-            log.info("Too many links: %d at %s", len(links), report['url'])
+    links = report.pop('links', [])
+    if len(links) > 1000:
+        log.info("Too many links: %d at %s", len(links), report['url'])
 
-        # save reports
-        if report['url']:
-            content = report.pop('content', None)
-            if content is not None:
-                storage.save_content(settings.storage_root, report['url'], content)
-            doc = storage.query_meta_by_url_one(report['url'])
-            if doc is not None:
-                doc.update(report)
-                doc['links_count'] = len(links)
-                if not storage.save_meta(doc, raise_conflict=False):
-                    continue
-            else:
-                print"-=============- UNEXPECTED not found doc for URL", report['url']
-                # new link
-                storage.save_meta(report, raise_conflict=False)
+    # save reports
+    if report['url']:
+        content = report.pop('content', None)
+        if content is not None:
+            storage.save_content(settings.storage_root, report['url'], content)
+        doc = storage.query_meta_by_url_one(report['url'])
+        if doc is not None:
+            doc.update(report)
+            doc['links_count'] = len(links)
+            if not storage.save_meta(doc, raise_conflict=False):
+                return None
+        else:
+            print"-=============- UNEXPECTED not found doc for URL", report['url']
+            # new link
+            storage.save_meta(report, raise_conflict=False)
 
-        # put links into queue
-        # 1. remove duplicates
-        links = list(set(links))
-        # 2. check for existing links
-        def url_filter(u):
-            ul = u.lower()
-            return ul.startswith("http") and \
-                (u.endswith("/") or ul.endswith("html") or ul.endswith("php"))
+    # put links into queue
+    # 1. remove duplicates
+    links = list(set(links))
+    # 2. check for existing links
+    def url_filter(u):
+        ul = u.lower()
+        return ul.startswith("http") and \
+            (u.endswith("/") or ul.endswith("html") or ul.endswith("php"))
 
-        links = filter(url_filter, links)
+    links = filter(url_filter, links)
 
-        def make_new_doc(url):
-            return {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
+    def make_new_doc(url):
+        return {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
 
-        new_docs = map(make_new_doc, links)
-        storage.update_meta(new_docs)
+    new_docs = map(make_new_doc, links)
+    storage.update_meta(new_docs)
 
     return None

@@ -18,7 +18,7 @@ def main():
     options, args = parse_params()
 
     item = {'url': None, 'links': args}
-    api.report_results([item])
+    api.report_result(item)
 
 
 if __name__ == '__main__':

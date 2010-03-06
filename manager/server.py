@@ -7,7 +7,7 @@ import hashlib
 from shared.conf import settings
 from shared.misc import gzip_string, init_logging, get_logger
 from shared.wsgi import method_dispatcher
-from manager import crawl_queue, report_results
+from .manager import crawl_queue, report_result
 
 init_logging(level=settings.get('loglevel'))
 log = get_logger()
@@ -32,7 +32,7 @@ def check_auth(request):
 
 urls = {
     '/crawl-queue': method_dispatcher(post=crawl_queue),
-    '/report':      method_dispatcher(put=report_results),
+    '/report':      method_dispatcher(put=report_result),
 }
 
 MIN_COMPRESS_LENGTH = 400

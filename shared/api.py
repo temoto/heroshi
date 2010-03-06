@@ -48,5 +48,5 @@ def get_crawl_queue(limit):
     queue = cjson.decode(response)
     return queue
 
-def report_results(items):
-    request_manager('/report', 'PUT', cjson.encode(items))
+def report_result(item):
+    request_manager('/report', 'PUT', cjson.encode(item))

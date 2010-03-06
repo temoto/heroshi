@@ -104,7 +104,7 @@ class Crawler(object):
                   len(pickled) / 1024,
                   self._connections)
         try:
-            api.report_results( [item] )
+            api.report_result(item)
         except ApiError:
             log.exception("report_item")
 
