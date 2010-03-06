@@ -1,6 +1,4 @@
-import os
 import unittest
-import cPickle
 
 from heroshi.worker import Crawler
 from heroshi.data import Link, Page

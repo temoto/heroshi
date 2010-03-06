@@ -3,8 +3,7 @@ from optparse import OptionParser
 
 import heroshi
 from heroshi.misc import update_loggers_level
-from heroshi.conf import settings
-from .worker import Crawler
+from heroshi.worker import Crawler
 
 
 def parse_params():

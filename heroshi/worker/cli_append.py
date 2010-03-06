@@ -3,7 +3,6 @@ from optparse import OptionParser
 
 import heroshi
 from heroshi.misc import update_loggers_level
-from heroshi import api
 
 
 def parse_params():
@@ -26,7 +25,7 @@ def main():
         update_loggers_level(logging.DEBUG)
 
     item = {'url': None, 'links': args}
-    api.report_result(item)
+    heroshi.api.report_result(item)
 
 
 if __name__ == '__main__':
