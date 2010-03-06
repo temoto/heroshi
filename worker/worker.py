@@ -21,17 +21,6 @@ log = get_logger()
 eventlet.monkey_patch(all=False, socket=True, select=True)
 
 
-USER_AGENTS = [
-    "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008072820 Firefox/3.0.1",
-    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)",
-    "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0",
-    "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98; Win 9x 4.90)",
-]
-
-def random_useragent():
-    return random.choice(USER_AGENTS)
-
-
 class Crawler(object):
     def __init__(self, queue_size, max_connections):
         self.max_queue_size = queue_size
