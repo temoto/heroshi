@@ -6,14 +6,14 @@ from webob.exc import HTTPMethodNotAllowed
 def method_dispatcher(default=None, **kwargs):
     """Dispatcher for switching callables by request method.
 
-    Instances of this class can be substituted for request handlers, e.g.:
+    Return values can be substituted for request handlers, e.g.:
 
-    urls = ({'/foo': method_dispatcher(get=foo_get, post=foo_post,
-                                       default=foo_other)})
+    >>> urls = {'/foo': method_dispatcher(get=foo_get, post=foo_post,
+                                          default=foo_other)}
 
-    If the default handler is supplied, it will be called for any
+    If `default` is supplied, it will be called for any
         request method not explicitly specified.
-    If default handler is not supplied, MethodNotAllowedError is raised
+    If `default` is not supplied, `MethodNotAllowedError` is raised
         for any request method not explicitly specified."""
 
     methods = {}
