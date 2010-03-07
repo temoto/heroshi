@@ -1,26 +1,35 @@
 #!/bin/bash
 
+# defaults
 : ${PYTHON="python"}
+nose=1
+pylint=1
 
+# parse command-line args
 while true; do
     case "$1" in
       +c|cover)             cover=1;        shift;;
       +cap|capture)         capture=1;      shift;;
       +lcap|capture-log)    log_capture=1;  shift;;
+      -lint|no-pylint)      pylint=;        shift;;
+      -tests|no-tests)      nose=;          shift;;
       --) shift; break;;
       -*) echo "Invalid option: $1"; exit 1;;
       *)  break;;
     esac
 done
 
+# set flags
 nose_flags=""
 if [ $cover ];            then nose_flags+=" --with-coverage --cover-html-dir=tmp-cover-html --cover-erase --cover-html --cover-package=heroshi --cover-package=tests "; fi
 if [ ! $capture ];        then nose_flags+=" --nocapture "; fi
 if [ ! $log_capture ];    then nose_flags+=" --nologcapture "; fi
-
 export PYTHONPATH=.:$PYTHONPATH
 
-$PYTHON $(which nosetests) $nose_flags
-pylint_cmd="$PYTHON $(which pylint) --disable-msg-cat=C,R -f colorized"
-find heroshi tests -name '*.py' | sort | xargs $pylint_cmd
+# actually run checks
+if [ $nose ];             then HEROSHI_CONFIG_PATH=stub $PYTHON $(which nosetests) $nose_flags; fi
+if [ $pylint ];           then
+    pylint_cmd="$PYTHON $(which pylint) --disable-msg-cat=C,R -f colorized"
+    find heroshi tests -name '*.py' | sort | xargs $pylint_cmd
+fi
 if [ $cover ];            then find ./ -name '*,cover' -exec rm "{}" \;; fi
