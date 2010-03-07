@@ -30,7 +30,7 @@ if [ ! $capture ];        then nose_flags+=" --nocapture "; fi
 if [ ! $log_capture ];    then nose_flags+=" --nologcapture "; fi
 if [ $xunit_save ];       then nose_flags+=" --with-xunit --xunit-file=test-report.xml "; fi
 
-pylint_flags=" --disable-msg=W0142 "
+pylint_flags=" --rcfile=etc/pylintrc "
 if [ $lint_save ];        then pylint_flags+=" -f parseable -i y --files-output=y ";
                           else pylint_flags+=" -f colorized "; fi
 export PYTHONPATH=.:smock:$PYTHONPATH
