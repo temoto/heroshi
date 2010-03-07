@@ -13,7 +13,7 @@ from heroshi.data import PoolMap, Link, Page
 from heroshi.conf import settings
 from heroshi.error import ApiError
 from heroshi import TIME_FORMAT
-from heroshi import api, misc
+from heroshi import api, error, misc
 log = misc.get_logger("worker.Crawler")
 
 eventlet.monkey_patch(all=False, socket=True, select=True)
@@ -121,7 +121,7 @@ class Crawler(object):
         conn = self._connections.get(conn_key, timeout=settings.socket_timeout)
         try:
             response, content = conn.request(url, headers={'user-agent': settings.identity['user_agent']})
-        except KeyboardInterrupt:
+        except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
             raise
         except socket.timeout:
             log.info(u"Socket timeout at %s", url)
@@ -136,7 +136,7 @@ class Crawler(object):
                 page = Page(Link(url), content)
                 try:
                     page.parse()
-                except KeyboardInterrupt:
+                except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
                     raise
                 except Exception, e:
                     report['result'] = u"Parse Error: " + unicode(e)
