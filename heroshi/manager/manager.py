@@ -1,3 +1,7 @@
+"""Heroshi URL server implementation main module."""
+
+__all__ = ['crawl_queue', 'report_result']
+
 import cjson
 import datetime
 import dateutil.parser
