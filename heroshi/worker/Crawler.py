@@ -53,9 +53,9 @@ class Crawler(object):
         spawn(qputter).link(_exc_link)
 
         while not self.closed:
-            sleep()
             # `get_nowait` will only work together with sleep(0) here
-            # because we need switches to reraise exception from `do_process`.
+            # because we need greenlet switch to reraise exception from `do_process`.
+            sleep()
             try:
                 item = self.queue.get_nowait()
             except Empty:
