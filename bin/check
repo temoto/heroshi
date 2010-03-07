@@ -24,7 +24,7 @@ nose_flags=""
 if [ $cover ];            then nose_flags+=" --with-coverage --cover-html-dir=tmp-cover-html --cover-erase --cover-html --cover-package=heroshi --cover-package=tests "; fi
 if [ ! $capture ];        then nose_flags+=" --nocapture "; fi
 if [ ! $log_capture ];    then nose_flags+=" --nologcapture "; fi
-export PYTHONPATH=.:$PYTHONPATH
+export PYTHONPATH=.:smock:$PYTHONPATH
 
 # actually run checks
 if [ $nose ];             then HEROSHI_CONFIG_PATH=stub $PYTHON $(which nosetests) $nose_flags; fi

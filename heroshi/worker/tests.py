@@ -1,57 +1,90 @@
+import eventlet
+import httplib
+# pylint-silence unused imports required for mocking
+import httplib2 # pylint: disable-msg=W0611
+import socket
+import smock
 import unittest
 
+from heroshi.conf import load_from_dict as conf_from_dict, settings
 from heroshi.worker import Crawler
-from heroshi.data import Link, Page
+from heroshi import api # pylint: disable-msg=W0611
+
+eventlet.monkey_patch(all=False, socket=True, select=True)
+
+
+def mock_httplib2_request_404(_url, *_args, **_kwargs):
+    resp = httplib.HTTPResponse(socket.socket())
+    resp.status = 404
+    return resp, ""
 
 
 class WorkerTestCase(unittest.TestCase):
-    """Heroshi worker tests"""
+    """Heroshi worker tests."""
 
     def setUp(self):
+        settings.manager_url = "fake-url"
+        settings.socket_timeout = 10
+        settings.identity = {'user_agent': "foo"}
         self.client = Crawler(
                 queue_size=2000,
                 max_connections=20,
                 )
-        shared.call_indicator.install_simple(shared.kot2, 'grab_multi')
 
     def tearDown(self):
-        shared.call_indicator.restore_all()
-        shared.call_indicator.clean_all()
+        smock.restore()
+        conf_from_dict({})
 
     def test_crawl_001(self):
-        """crawler.crawl() must call reactor.run()"""
+        """Must call `api.get_crawl_queue()`."""
 
-        self.client.crawl()
-        self.assertTrue(shared.call_indicator.is_called('twisted.internet.reactor.run'))
-        shared.call_indicator.clean_calls('run')
+        def mock_get_crawl_queue(_limit):
+            self.client.stop()
+            return []
 
-    def test_queue_get_001(self):
-        """crawler.queue_get() must call getPage()"""
+        smock.mock('api.get_crawl_queue', returns_func=mock_get_crawl_queue)
+        with eventlet.Timeout(1, False):
+            self.client.crawl()
+        self.assertTrue(self.client.closed)
+        self.assertTrue(smock.is_called('api.get_crawl_queue'))
 
-        self.client.queue_get()
-        self.assertTrue(shared.call_indicator.is_called('twisted.web.client.getPage'))
-        shared.call_indicator.clean_calls('connectTCP')
+    def test_crawl_002(self):
+        """Must call `httplib2.Http.request` and `report_item`."""
 
-    def test_queue_put_001(self):
-        """crawler.queue_put() must call getPage()"""
+        def mock_get_crawl_queue(_limit):
+            eventlet.sleep(0.05)
+            return [{'url': "http://localhost/test_crawl_002_link", 'visited': None, 'links': []}]
 
-        self.client.queue_put()
-        self.assertTrue(shared.call_indicator.is_called('twisted.web.client.getPage'))
-        shared.call_indicator.clean_calls('connectTCP')
+        def mock_report_result(report):
+            self.assertEqual(report['url'], "http://localhost/test_crawl_002_link")
 
-    def test_queue_put_002(self):
-        """crawler.queue_put() with some links must call getPage()"""
+        smock.mock('api.get_crawl_queue', returns_func=mock_get_crawl_queue)
+        smock.mock('api.report_result', returns_func=mock_report_result)
+        smock.mock('httplib2.Http.request', returns_func=mock_httplib2_request_404)
+        with eventlet.Timeout(1, False):
+            self.client.crawl()
+        self.assertTrue(smock.is_called('httplib2.Http.request'))
+        self.assertTrue(smock.is_called('api.report_result'))
 
-        parent_link = Link('http://localhost/')
-        links = [ Link('http://localhost/cat/%d/' % x, parent_link) for x in xrange(7) ]
-        pages = [ Page(link, 'empty-page') for link in links ]
-        self.client.pages += pages
-        self.client.queue_put()
-        self.assertTrue(shared.call_indicator.is_called('twisted.web.client.getPage'))
+    def test_crawl_003(self):
+        """Must make no more than 5 simultaneous connections to single server."""
 
-    def test_push_link_001(self):
-        """crawler.push_link() must call getPage()"""
+        item = {'url': "http://localhost/test_crawl_003_link", 'visited': None, 'links': []}
+        flags = {'max_count': 0}
+        def mock_httplib2_request_sleep(_url, *_args, **_kwargs):
+            if 'http:localhost' in self.client._connections._pools:
+                pool = self.client._connections._pools['http:localhost']
+                flags['max_count'] = max(flags['max_count'], pool.max_size - pool.free())
+            eventlet.sleep(0.05)
+            raise socket.timeout()
 
-        link = Link('http://localhost/')
-        self.client.push_link(link)
-        self.assertTrue(shared.call_indicator.is_called('twisted.web.client.getPage'))
+        smock.mock('api.get_crawl_queue', returns=[])
+        smock.mock('api.report_result', returns=None)
+        smock.mock('httplib2.Http.request', returns_func=mock_httplib2_request_sleep)
+        # prepopulate the queue
+        for _ in xrange(10):
+            self.client.queue.put(item)
+        with eventlet.Timeout(1, False):
+            self.client.crawl()
+        self.assertTrue(0 < flags['max_count'] <= 5)
+
