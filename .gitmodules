@@ -1,0 +1,3 @@
+[submodule "smock"]
+	path = smock
+	url = git://github.com/temoto/smock
