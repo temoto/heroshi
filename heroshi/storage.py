@@ -40,8 +40,8 @@ def update_meta(items):
     server = couchdb.Server(settings.couchdb_url)
     db = server['heroshi']
     try:
-        r = db.update(items)
-        return list(r)
+        update_results = db.update(items)
+        return update_results
     except couchdb.ResourceConflict:
         pass
 #         log.error("resource conflict for items", items)

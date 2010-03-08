@@ -76,10 +76,10 @@ def report_result(request):
     # 1. remove duplicates
     links = list(set(links))
     # 2. check for existing links
-    def url_filter(u):
-        ul = u.lower()
-        return ul.startswith("http") and \
-            (u.endswith("/") or ul.endswith("html") or ul.endswith("php"))
+    def url_filter(url):
+        url_lower = url.lower()
+        return url_lower.startswith("http") and \
+            (url.endswith("/") or url_lower.endswith("html") or url_lower.endswith("php"))
 
     links = filter(url_filter, links)
 

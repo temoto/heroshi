@@ -6,12 +6,14 @@ from heroshi.misc import update_loggers_level
 
 
 def parse_params():
-    usage_info = "Usage: %prog [OPTION...] ITEM-URL..."
-    version_info = "Heroshi/%s" % heroshi.__version__
+    usage_info = u"Usage: %prog [OPTION...] ITEM-URL..."
+    version_info = u"Heroshi/%s" % heroshi.__version__
     opt_parser = OptionParser(usage_info, version=version_info)
     opt_parser.set_defaults(verbose=False, quiet=False)
-    opt_parser.add_option('-q', '--quiet', action="store_true", help="Be quiet, don't generate any output")
-    opt_parser.add_option('-v', '--verbose', action="store_true", help="Be verbose, print detailed information")
+    opt_parser.add_option('-q', '--quiet', action="store_true",
+                          help=u"Be quiet, don't generate any output")
+    opt_parser.add_option('-v', '--verbose', action="store_true",
+                          help=u"Be verbose, print detailed information")
     (options, args) = opt_parser.parse_args()
     return options, args
 
