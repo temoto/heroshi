@@ -39,13 +39,13 @@ class Link(object):
             self.is_external = self.is_full
         if not self.is_full:
             if not parent_link:
-                raise Exception, "Relative URL is useless without parent"
+                raise ValueError("Relative URL is useless without parent")
             if not self.url.startswith('/'):
                 self.url = '/' + self.url
 
     def hash(self):
         if not self.domain: # whether self.full is even possible
-            raise Exception, "Getting hash of relative URL is useless"
+            raise ValueError("Getting hash of relative URL is useless.")
         hasher = HASHER(self.full)
         return hasher.hexdigest()
 
