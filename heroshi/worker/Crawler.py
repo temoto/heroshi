@@ -23,11 +23,14 @@ class Crawler(object):
     def __init__(self, queue_size, max_connections):
         self.max_queue_size = queue_size
         self.max_connections = max_connections
+        self.max_connections_per_host = 5
 
         self.queue = Queue(self.max_queue_size)
         self.closed = False
         self._handler_pool = GreenPool(self.max_connections)
-        self._connections = PoolMap(httplib2.Http, pool_max_size=5, timeout=120)
+        self._connections = PoolMap(httplib2.Http,
+                                    pool_max_size=self.max_connections_per_host,
+                                    timeout=120)
 
         log.debug("Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
@@ -65,6 +68,28 @@ class Crawler(object):
 
     def stop(self):
         self.closed = True
+
+    def graceful_stop(self, timeout=None):
+        """Stops crawler and waits for all already started crawling requests to finish.
+
+        If `timeout` is supplied, it waits for at most `timeout` time to finish
+            and returns True if allocated time was enough.
+            Returns False if `timeout` was not enough.
+        """
+        self.closed = True
+        if timeout is not None:
+            with eventlet.Timeout(timeout, False):
+                self._handler_pool.waitall()
+                return True
+            return False
+        else:
+            self._handler_pool.waitall()
+
+    def get_active_connections_count(self, key):
+        pool = self._connections._pools.get(key)
+        if pool is None:
+            return 0
+        return pool.max_size - pool.free()
 
     def do_queue_get(self):
         log.debug("It's queue update time!")
