@@ -32,7 +32,7 @@ class WorkerTestCase(unittest.TestCase):
                 )
 
     def tearDown(self):
-        smock.restore()
+        smock.cleanup()
         conf_from_dict({})
 
     def test_crawl_001(self):

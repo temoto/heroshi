@@ -18,7 +18,7 @@ class ManagerTestCase(unittest.TestCase):
         settings.storage_root = "/tmp/heroshi-manager-test"
 
     def tearDown(self):
-        smock.restore()
+        smock.cleanup()
         conf_from_dict({})
 
     def test_get_001(self):
