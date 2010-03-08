@@ -47,7 +47,7 @@ load-plugins=
 #enable-msg-cat=
 
 # Disable all messages in the listed categories.
-#disable-msg-cat=
+disable-msg-cat=C,R
 
 # Enable the message(s) with the given id(s).
 #enable-msg=

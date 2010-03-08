@@ -16,6 +16,7 @@ while true; do
       -tests|no-tests)      nose=;          shift;;
       +lint-save)           lint_save=1;    shift;;
       +xunit-save)          xunit_save=1;   shift;;
+      +lint-pedant)         lint_pedant=1;  shift;;
       --) shift; break;;
       -*) echo "Invalid option: $1"; exit 1;;
       *)  break;;
@@ -33,6 +34,7 @@ if [ $xunit_save ];       then nose_flags+=" --with-xunit --xunit-file=test-repo
 pylint_flags=" --rcfile=etc/pylintrc "
 if [ $lint_save ];        then pylint_flags+=" -f parseable -i y --files-output=y ";
                           else pylint_flags+=" -f colorized "; fi
+if [ $lint_pedant ];      then pylint_flags+=" --enable-msg-cat=C,R "; fi
 export PYTHONPATH=.:smock:$PYTHONPATH
 
 
