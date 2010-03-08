@@ -1,5 +1,5 @@
 from __future__ import with_statement
-import couchdb.client
+import couchdb.client as couchdb
 import hashlib
 import os
 import random
@@ -24,32 +24,32 @@ def save_content(root, url, content):
         f.write(content.encode('utf-8'))
 
 def save_meta(data, raise_conflict=True):
-    server = couchdb.client.Server(settings.couchdb_url)
+    server = couchdb.Server(settings.couchdb_url)
     db = server['heroshi']
     id_ = data['url']
     try:
         db[id_] = data
         return True
-    except couchdb.client.ResourceConflict:
+    except couchdb.ResourceConflict:
         if raise_conflict:
             raise
-    except couchdb.client.ServerError:
+    except couchdb.ServerError:
         log.exception("")
 
 def update_meta(items):
-    server = couchdb.client.Server(settings.couchdb_url)
+    server = couchdb.Server(settings.couchdb_url)
     db = server['heroshi']
     try:
         r = db.update(items)
         return list(r)
-    except couchdb.client.ResourceConflict:
+    except couchdb.ResourceConflict:
         pass
 #         log.error("resource conflict for items", items)
-    except couchdb.client.ServerError:
+    except couchdb.ServerError:
         log.exception("")
 
 def _query_meta_view(view, limit, **kwargs):
-    server = couchdb.client.Server(settings.couchdb_url)
+    server = couchdb.Server(settings.couchdb_url)
     db = server['heroshi']
 
     params = {'include_docs': True}
