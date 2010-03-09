@@ -7,7 +7,7 @@ import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib2
-import random, socket, sys
+import random, socket, sys, time
 
 from heroshi.data import PoolMap, Link, Page
 from heroshi.conf import settings
@@ -131,44 +131,65 @@ class Crawler(object):
         except ApiError:
             log.exception("report_item")
 
-    def do_process(self, item):
-        url = item['url']
-        report = {'url': url}
+    def fetch(self, uri, scheme, authority):
+        log.debug(u"  fetching: %s.", uri)
 
-        uri = httplib2.iri2uri(url)
-        (scheme, authority, _path, _query, _fragment) = httplib2.parse_uri(uri)
-        if scheme is None or authority is None:
-            log.warning(u"Skipping invalid URI: %s", unicode(uri))
-            return
+        result = {}
+
         conn_key = scheme+":"+authority
-
-        log.debug(u"Crawling: %s", url)
         conn = self._connections.get(conn_key, timeout=settings.socket_timeout)
         try:
-            response, content = conn.request(url, headers={'user-agent': settings.identity['user_agent']})
+            response, content = conn.request(uri, headers={'user-agent': settings.identity['user_agent']})
         except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
             raise
         except socket.timeout:
-            log.info(u"Socket timeout at %s", url)
-            report['result'] = u"Socket timeout"
+            log.info(u"Socket timeout at %s", uri)
+            result['result'] = u"Socket timeout"
         except Exception, e:
-            log.warning(u"HTTP error at %s: %s", url, str(e))
-            report['result'] = u"HTTP Error: " + unicode(e)
+            log.warning(u"HTTP error at %s: %s", uri, str(e))
+            result['result'] = u"HTTP Error: " + unicode(e)
         else:
-            report['status_code'] = response.status
-            report['content'] = content
-            if response.status == 200:
-                page = Page(Link(url), content)
-                try:
-                    page.parse()
-                except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
-                    raise
-                except Exception, e:
-                    report['result'] = u"Parse Error: " + unicode(e)
-                else:
-                    report['links'] = [ link.full for link in page.links ]
+            result['result'] = u"OK"
+            result['status_code'] = response.status
+            # TODO: update tests for this to work
+            #result['headers'] = response.getheaders()
+            result['content'] = content
         finally:
             self._connections.put(conn_key, conn)
+
+        return result
+
+    def do_process(self, item):
+        url = item['url']
+        log.debug(u"Crawling: %s", url)
+        uri = httplib2.iri2uri(url)
+        report = {
+            'url': url,
+            'result': None,
+            'status_code': None,
+            'visited': None,
+        }
+
+        (scheme, authority, _path, _query, _fragment) = httplib2.parse_uri(uri)
+        if scheme is None or authority is None:
+            report['result'] = u"Invalid URI"
+        else:
+            fetch_start_time = time.time()
+            fetch_result = self.fetch(uri, scheme, authority)
+            fetch_end_time = time.time()
+            report['fetch_time'] = fetch_end_time - fetch_start_time
+            report.update(fetch_result)
+
+        if report['status_code'] == 200:
+            page = Page(Link(uri), report['content'])
+            try:
+                page.parse()
+            except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
+                raise
+            except Exception, e:
+                report['result'] = u"Parse Error: " + unicode(e)
+            else:
+                report['links'] = [ link.full for link in page.links ]
 
         timestamp = datetime.now().strftime(TIME_FORMAT)
         report['visited'] = timestamp
