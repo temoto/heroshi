@@ -96,7 +96,7 @@ def init():
     default_path = os.environ.get(ENVIRON_KEY)
 
     # Allow environment to create a stub empty config. Mostly useful for tests.
-    if default_path.lower() in ("dummy", "stub"):
+    if default_path and default_path.lower() in ("dummy", "stub"):
         settings._target = {}
         settings._source = "stub"
         return
