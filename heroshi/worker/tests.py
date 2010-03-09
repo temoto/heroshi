@@ -91,3 +91,142 @@ class WorkerTestCase(unittest.TestCase):
         self.assertTrue(flags['max_count'] <= self.client.max_connections_per_host,
                         u"Started too many connections.")
 
+
+class RobotsTestCase(unittest.TestCase):
+    """Heroshi worker robots.txt handling tests."""
+
+    def setUp(self):
+        settings.manager_url = "fake-url"
+        settings.socket_timeout = 10
+        settings.identity = {'user_agent': "foo"}
+        self.client = Crawler(queue_size=2000, max_connections=20)
+
+        self.uris = []
+        self.responses = {}
+        self.handlers = {}
+        self.requested = []
+        self.used_run_crawler = False
+        self.on_unexpected_uri = 'fail'
+        self.on_unexpected_uri_func = lambda url: self.fail(u"`self.on_unexpected_uri_func` is unset.")
+        self.default_hanlder_200 = lambda url: (make_http_response(200), "Dummy page at %s." % (url,))
+        self.default_hanlder_404 = lambda url: (make_http_response(404), "Not found: %s." % (url,))
+
+        def mock_httplib2_request(url, *args, **kwargs):
+            self.requested.append(url)
+            if url in self.responses:
+                code, content = self.responses[url]
+                return make_http_response(code), content
+            elif url in self.handlers:
+                handler = self.handlers[url]
+                return handler(url)
+            else:
+                if self.on_unexpected_uri == 'fail':
+                    self.fail(u"Unknown URL requested: %s. You didn't register it in `self.uris`." % (url,))
+                elif self.on_unexpected_uri == '200':
+                    return self.default_hanlder_200(url)
+                elif self.on_unexpected_uri == '404':
+                    return self.default_hanlder_404(url)
+                elif self.on_unexpected_uri == 'call':
+                    return make_http_response(*self.on_unexpected_uri_func(url))
+                else:
+                    self.fail(u"Unknown URL requested: %s. And no code for `self.on_unexpected_uri`: %s." %
+                              (url, self.on_unexpected_uri))
+            self.fail(u"httplib2_request mock supposed to return somewhere earlier.")
+
+        smock.mock('api.get_crawl_queue', returns=[])
+        smock.mock('api.report_result', returns=None)
+        smock.mock('httplib2.Http.request', returns_func=mock_httplib2_request)
+
+    def tearDown(self):
+        smock.cleanup()
+        conf_from_dict({})
+
+        assert self.used_run_crawler == True, \
+                u"You supposed to run `self.run_crawler` in `RobotsTestCase` tests."
+
+    def run_crawler(self):
+        self.used_run_crawler = True
+
+        assert sorted(self.uris) == sorted(set(self.uris)), \
+                u"`RobotsTestCase` currently works only with a set of unique URIs. You provided some duplicates. "
+
+        for uri in self.uris:
+            item = {'url': uri, 'visited': None, 'links': []}
+            self.handlers[uri] = self.default_hanlder_200
+            self.client.queue.put(item)
+
+        with eventlet.Timeout(DEFAULT_TIMEOUT, False):
+            self.client.crawl()
+
+    def test_self_001(self):
+        """Quick self-test for testcase: fail on non-registered URI."""
+
+        self.client.queue.put({'url': "http://dummy-valid.url/", 'visited': None, 'links': []})
+        self.assertRaises(AssertionError, self.run_crawler)
+
+    def test_request_robots_first(self):
+        """For each new domain/port pair, must first request for /robots.txt."""
+
+        self.uris.append("http://localhost/test_request_robots_first_link")
+        self.on_unexpected_uri = '200'
+        self.run_crawler()
+        self.assertTrue(self.requested[0] == "http://localhost/robots.txt")
+
+    def test_robots_401(self):
+        """Must not crawl URL if /robots.txt yields 401."""
+
+        URI = "http://localhost/test_robots_401_link"
+        self.uris.append(URI)
+        self.responses["http://localhost/robots.txt"] = 401, ""
+        self.run_crawler()
+        self.assertTrue(URI not in self.requested)
+
+    def test_robots_403(self):
+        """Must not crawl URL if /robots.txt yields 403."""
+
+        URI = "http://localhost/test_robots_403_link"
+        self.uris.append(URI)
+        self.responses["http://localhost/robots.txt"] = 403, ""
+        self.run_crawler()
+        self.assertTrue(URI not in self.requested)
+
+    def test_robots_404(self):
+        """Must crawl URL if /robots.txt yields 404."""
+
+        URI = "http://localhost/test_robots_404_link"
+        self.uris.append(URI)
+        self.handlers["http://localhost/robots.txt"] = self.default_hanlder_404
+        self.run_crawler()
+        self.assertTrue(URI in self.requested)
+
+    def test_robots_empty(self):
+        """Must crawl URL if /robots.txt is empty."""
+
+        URI = "http://localhost/test_robots_empty_link"
+        self.uris.append(URI)
+        self.responses["http://localhost/robots.txt"] = 200, ""
+        self.run_crawler()
+        self.assertTrue(URI in self.requested)
+
+    def test_robots_allows_all_to_star(self):
+        """Must crawl URL if /robots.txt allows all robots everything."""
+
+        URI = "http://localhost/test_robots_allows_all_to_star_link"
+        self.uris.append(URI)
+        self.responses["http://localhost/robots.txt"] = 200, "\
+User-agent: *\r\n\
+Disallow:"
+        self.run_crawler()
+        self.assertTrue(URI in self.requested)
+
+    def test_robots_disallows_all_to_star(self):
+        """Must not crawl URL if /robots.txt disallows all robots everything."""
+
+        URI = "http://localhost/test_robots_allows_all_to_star_link"
+        self.uris.append(URI)
+        self.responses["http://localhost/robots.txt"] = 200, "\
+User-agent: *\r\n\
+Disallow: /"
+        self.run_crawler()
+        self.assertTrue(URI not in self.requested)
+

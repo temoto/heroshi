@@ -40,3 +40,11 @@ class WrongOption(ConfigurationError):
 
 class ApiError(Error):
     pass
+
+
+class CrawlError(Error):
+    pass
+
+
+class FetchError(CrawlError):
+    pass

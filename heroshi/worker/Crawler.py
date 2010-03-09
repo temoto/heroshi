@@ -8,10 +8,11 @@ from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib2
 import random, socket, sys, time
+import robotparser
 
 from heroshi.data import PoolMap, Link, Page
 from heroshi.conf import settings
-from heroshi.error import ApiError
+from heroshi.error import ApiError, CrawlError, FetchError
 from heroshi import TIME_FORMAT
 from heroshi import api, error, misc
 log = misc.get_logger("worker.Crawler")
@@ -31,6 +32,9 @@ class Crawler(object):
         self._connections = PoolMap(httplib2.Http,
                                     pool_max_size=self.max_connections_per_host,
                                     timeout=120)
+        self._robots_cache = PoolMap(self.get_robots_checker,
+                                     pool_max_size=1,
+                                     timeout=600)
 
         log.debug("Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
@@ -159,6 +163,41 @@ class Crawler(object):
 
         return result
 
+    def get_robots_checker(self, scheme, authority):
+        """PoolMap func :: scheme, authority -> (agent, uri -> bool)."""
+        robots_uri = "%s://%s/robots.txt" % (scheme, authority)
+
+        fetch_result = self.fetch(robots_uri, scheme, authority)
+        if fetch_result['result'] == u"OK":
+            # TODO: set expiration time from headers
+            # but this must be done after `self._robots_cache.put` or somehow else...
+            if 200 <= fetch_result['status_code'] < 300:
+                parser = robotparser.RobotFileParser()
+                parser.parse(fetch_result['content'].splitlines())
+                return parser.can_fetch
+            # Authorization required and Forbidden are considered Disallow all.
+            elif fetch_result['status_code'] in (401, 403):
+                return lambda _agent, _uri: False
+            # /robots.txt Not Found is considered Allow all.
+            elif fetch_result['status_code'] == 404:
+                return lambda _agent, _uri: True
+            # FIXME: this is an optimistic rule and probably should be detailed with more specific checks
+            elif fetch_result['status_code'] >= 400:
+                return lambda _agent, _uri: True
+            # What other cases left? 100 and redirects. Consider it Disallow all.
+            else:
+                return lambda _agent, _uri: False
+        else:
+            raise FetchError(u"/robots.txt fetch problem: %s" % (fetch_result['result']))
+
+    def ask_robots(self, uri, scheme, authority):
+        key = scheme+":"+authority
+        checker = self._robots_cache.get(key, scheme, authority)
+        try:
+            return checker(settings.identity['user_agent'], uri)
+        finally:
+            self._robots_cache.put(key, checker)
+
     def do_process(self, item):
         url = item['url']
         log.debug(u"Crawling: %s", url)
@@ -174,6 +213,19 @@ class Crawler(object):
         if scheme is None or authority is None:
             report['result'] = u"Invalid URI"
         else:
+            try:
+                robot_check_result = self.ask_robots(uri, scheme, authority)
+            except FetchError, e:
+                report['result'] = unicode(e)
+                return report
+            if robot_check_result == True:
+                pass
+            elif robot_check_result == False:
+                report['result'] = u"Deny by robots.txt"
+                return report
+            else:
+                assert False, u"This branch should not be executed."
+
             fetch_start_time = time.time()
             fetch_result = self.fetch(uri, scheme, authority)
             fetch_end_time = time.time()
