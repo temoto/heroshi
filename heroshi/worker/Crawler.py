@@ -42,7 +42,7 @@ class Crawler(object):
         def _exc_link(gt):
             try:
                 gt.wait()
-            except Exception:
+            except Exception: # pylint: disable-msg=W0703
                 crawler_thread.throw(*sys.exc_info())
 
         def qputter():
