@@ -13,10 +13,14 @@ from heroshi import api # pylint: disable-msg=W0611
 eventlet.monkey_patch(all=False, socket=True, select=True)
 
 
-def mock_httplib2_request_404(_url, *_args, **_kwargs):
-    resp = httplib.HTTPResponse(socket.socket())
-    resp.status = 404
-    return resp, ""
+# Very unprobably, but still may be you need to raise this value on slow machine if most tests fail.
+DEFAULT_TIMEOUT = 0.02
+
+
+def make_http_response(status_code):
+    response = httplib.HTTPResponse(socket.socket())
+    response.status = status_code
+    return response
 
 
 class WorkerTestCase(unittest.TestCase):
@@ -39,7 +43,7 @@ class WorkerTestCase(unittest.TestCase):
         """Must call `api.get_crawl_queue()`."""
 
         smock.mock('api.get_crawl_queue', returns=[])
-        with eventlet.Timeout(0.05, False):
+        with eventlet.Timeout(DEFAULT_TIMEOUT, False):
             self.client.crawl()
         self.assertTrue(smock.is_called('api.get_crawl_queue'))
 
@@ -54,8 +58,8 @@ class WorkerTestCase(unittest.TestCase):
 
         smock.mock('api.get_crawl_queue', returns_func=mock_get_crawl_queue)
         smock.mock('api.report_result', returns_func=mock_report_result)
-        smock.mock('httplib2.Http.request', returns_func=mock_httplib2_request_404)
-        with eventlet.Timeout(0.05, False):
+        smock.mock('httplib2.Http.request', returns=(make_http_response(404), ""))
+        with eventlet.Timeout(DEFAULT_TIMEOUT, False):
             self.client.crawl()
         self.assertTrue(smock.is_called('httplib2.Http.request'))
         self.assertTrue(smock.is_called('api.report_result'))
@@ -78,7 +82,7 @@ class WorkerTestCase(unittest.TestCase):
         # prepopulate the queue
         for _ in xrange(NUM_ITEMS):
             self.client.queue.put(item)
-        with eventlet.Timeout(0.05, False):
+        with eventlet.Timeout(DEFAULT_TIMEOUT, False):
             self.client.crawl()
         self.assertTrue(self.client.queue.empty(), u"Crawler didn't consume all queue in allocated time.")
         self.assertTrue(self.client.graceful_stop(timeout=NUM_ITEMS * REQUEST_PAUSE),
