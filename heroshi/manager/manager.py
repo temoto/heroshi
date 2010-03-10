@@ -53,6 +53,7 @@ def report_result(request):
     report = cjson.decode(request.body)
 
     links = report.pop('links', [])
+    # FIXME: magic number
     if len(links) > 1000:
         log.info("Too many links: %d at %s", len(links), report['url'])
 
