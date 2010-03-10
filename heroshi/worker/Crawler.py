@@ -194,7 +194,7 @@ class Crawler(object):
         key = scheme+":"+authority
         checker = self._robots_cache.get(key, scheme, authority)
         try:
-            return checker(settings.identity['user_agent'], uri)
+            return checker(settings.identity['name'], uri)
         finally:
             self._robots_cache.put(key, checker)
 

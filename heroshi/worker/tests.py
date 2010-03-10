@@ -29,7 +29,7 @@ class WorkerTestCase(unittest.TestCase):
     def setUp(self):
         settings.manager_url = "fake-url"
         settings.socket_timeout = 10
-        settings.identity = {'user_agent': "foo"}
+        settings.identity = {'name': "HeroshiBot", 'user_agent': "HeroshiBot/100.500 (lalala)"}
         self.client = Crawler(
                 queue_size=2000,
                 max_connections=20,
@@ -98,7 +98,7 @@ class RobotsTestCase(unittest.TestCase):
     def setUp(self):
         settings.manager_url = "fake-url"
         settings.socket_timeout = 10
-        settings.identity = {'user_agent': "foo"}
+        settings.identity = {'name': "HeroshiBot", 'user_agent': "HeroshiBot/100.500 (lalala)"}
         self.client = Crawler(queue_size=2000, max_connections=20)
 
         self.uris = []
@@ -226,6 +226,17 @@ Disallow:"
         self.uris.append(URI)
         self.responses["http://localhost/robots.txt"] = 200, "\
 User-agent: *\r\n\
+Disallow: /"
+        self.run_crawler()
+        self.assertTrue(URI not in self.requested)
+
+    def test_robots_disallows_all_to_heroshi(self):
+        """Must not crawl URL if /robots.txt disallows HeroshiBot everything."""
+
+        URI = "http://localhost/test_robots_disallows_all_to_heroshi"
+        self.uris.append(URI)
+        self.responses["http://localhost/robots.txt"] = 200, "\
+User-agent: HeroshiBot\r\n\
 Disallow: /"
         self.run_crawler()
         self.assertTrue(URI not in self.requested)

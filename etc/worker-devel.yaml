@@ -2,6 +2,7 @@ log:
     level: 0
 
 identity:
+    name: "HeroshiBot"
     user_agent: "HeroshiBot/0.3 (+http://github.com/temoto/heroshi; temotor@gmail.com)"
 
 full_queue_pause: 10
