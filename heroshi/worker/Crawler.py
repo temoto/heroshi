@@ -195,11 +195,8 @@ class Crawler(object):
 
     def ask_robots(self, uri, scheme, authority):
         key = scheme+":"+authority
-        checker = self._robots_cache.get(key, scheme, authority)
-        try:
+        with self._robots_cache.getc(key, scheme, authority) as checker:
             return checker(settings.identity['name'], uri)
-        finally:
-            self._robots_cache.put(key, checker)
 
     def do_process(self, item):
         url = item['url']
