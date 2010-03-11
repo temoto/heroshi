@@ -36,7 +36,7 @@ class Crawler(object):
                                      pool_max_size=1,
                                      timeout=600)
 
-        log.debug("Crawler started. Max queue size: %d, connections: %d.",
+        log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
 
     def crawl(self):
@@ -96,15 +96,15 @@ class Crawler(object):
         return pool.max_size - pool.free()
 
     def do_queue_get(self):
-        log.debug("It's queue update time!")
+        log.debug(u"It's queue update time!")
         num = self.max_queue_size - self.queue.qsize()
-        log.debug("  getting %d items from URL server.", num)
+        log.debug(u"  getting %d items from URL server.", num)
         try:
             new_queue = api.get_crawl_queue(num)
-            log.debug("  got %d items", len(new_queue))
+            log.debug(u"  got %d items", len(new_queue))
 
             if len(new_queue) == 0:
-                log.debug("  waiting some time before another request to URL server.")
+                log.debug(u"  waiting some time before another request to URL server.")
                 sleep(10.0)
 
             # extend worker queue
@@ -120,7 +120,7 @@ class Crawler(object):
             # shuffle the queue so there are no long sequences of URIs on same domain
             random.shuffle(self.queue.queue)
         except ApiError:
-            log.exception("do_queue_get")
+            log.exception(u"do_queue_get")
             self.stop()
 
     def report_item(self, item):
@@ -133,7 +133,7 @@ class Crawler(object):
         try:
             api.report_result(item)
         except ApiError:
-            log.exception("report_item")
+            log.exception(u"report_item")
 
     def fetch(self, uri, scheme, authority):
         log.debug(u"  fetching: %s.", uri)
