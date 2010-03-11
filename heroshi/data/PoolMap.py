@@ -1,4 +1,5 @@
 # coding: utf-8
+from contextlib import contextmanager
 from eventlet import spawn_after
 from eventlet.pools import Pool
 
@@ -22,6 +23,12 @@ class PoolMap(object):
             self.stop_timer(key)
 
         return pool.get()
+
+    @contextmanager
+    def getc(self, key, *args, **kwargs):
+        item = self.get(key, *args, **kwargs)
+        yield item
+        self.put(key, item)
 
     def put(self, key, value):
         pool = self._pools[key]
