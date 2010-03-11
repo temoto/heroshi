@@ -39,7 +39,7 @@ class Crawler(object):
         log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
 
-    def crawl(self):
+    def crawl(self, forever=True):
         # TODO: do something special about signals?
 
         crawler_thread = greenthread.getcurrent()
@@ -57,7 +57,8 @@ class Crawler(object):
                 else:
                     sleep(settings.full_queue_pause)
 
-        spawn(qputter).link(_exc_link)
+        if forever:
+            spawn(qputter).link(_exc_link)
 
         while not self.closed:
             # `get_nowait` will only work together with sleep(0) here
@@ -66,6 +67,8 @@ class Crawler(object):
             try:
                 item = self.queue.get_nowait()
             except Empty:
+                if not forever:
+                    self.graceful_stop()
                 sleep(0.01)
                 continue
             self._handler_pool.spawn(self.do_process, item).link(_exc_link)

@@ -7,7 +7,7 @@ from heroshi.worker import Crawler
 
 
 def parse_params():
-    usage_info = u"Usage: %prog [OPTION...]"
+    usage_info = u"Usage: %prog [OPTION...] [URL...]"
     version_info = u"Heroshi/%s" % heroshi.__version__
     opt_parser = OptionParser(usage_info, version=version_info)
     opt_parser.set_defaults(verbose=False, quiet=False, queue_size=500, connections=500)
@@ -24,7 +24,7 @@ def parse_params():
     return options, args
 
 def main():
-    (options, _args) = parse_params()
+    options, args = parse_params()
 
     # set up logging
     if options.quiet:
@@ -32,9 +32,17 @@ def main():
     elif options.verbose:
         update_loggers_level(logging.DEBUG)
 
-    crawler = Crawler(int(options.queue_size), int(options.connections))
+    if len(args) > 0:
+        max_queue_size = len(args)
+    else:
+        max_queue_size = int(options.queue_size)
+
+    crawler = Crawler(max_queue_size, int(options.connections))
+    for url in args:
+        crawler.queue.put({'url': url, 'visited': None})
+
     try:
-        crawler.crawl()
+        crawler.crawl(forever=len(args) == 0)
     except KeyboardInterrupt:
         pass
 
