@@ -3,16 +3,6 @@ from eventlet import spawn_after
 from eventlet.pools import Pool
 
 
-class FactoryPool(Pool):
-    def __init__(self, constructor_pack, min_size=0, max_size=4, order_as_stack=False):
-        self.constructor_pack = constructor_pack
-        super(FactoryPool, self).__init__(min_size, max_size, order_as_stack)
-
-    def create(self):
-        fun, args, kwargs = self.constructor_pack
-        return fun(*args, **kwargs)
-
-
 class PoolMap(object):
     def __init__(self, func, timeout=None, pool_max_size=1):
         self.func = func
@@ -25,8 +15,9 @@ class PoolMap(object):
         if key in self._pools:
             pool = self._pools[key]
         else:
-            pool = self._pools[key] = FactoryPool( (self.func, args, kwargs),
-                                                  max_size=self.pool_max_size)
+            pool = Pool(max_size=self.pool_max_size)
+            pool.create = lambda: self.func(*args, **kwargs)
+            self._pools[key] = pool
         if self.timeout is not None:
             self.stop_timer(key)
 

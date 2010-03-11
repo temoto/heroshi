@@ -1,16 +1,17 @@
 import cjson
+from eventlet.pools import Pool
 import httplib2
 import socket
 from urllib import urlencode
 
-from heroshi.data import FactoryPool
 from heroshi.conf import settings
 from heroshi.error import ApiError
 from heroshi.misc import get_logger
 log = get_logger("api")
 
 
-manager_connections = FactoryPool( (httplib2.Http, (), {'timeout': 20}), max_size=2)
+manager_connections = Pool(max_size=2)
+manager_connections.create = lambda: httplib2.Http(timeout=20)
 
 
 def request_manager(resource, method, data=None, headers=None):
