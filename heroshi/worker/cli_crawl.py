@@ -20,7 +20,7 @@ def parse_params():
                           metavar="N")
     opt_parser.add_option('-c', '--connections',
                           help=u"Maximum number of open connections. [Default = %default]", metavar="N")
-    (options, args) = opt_parser.parse_args()
+    options, args = opt_parser.parse_args()
     return options, args
 
 def main():
