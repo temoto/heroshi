@@ -69,6 +69,22 @@ def postreport_worker():
         with storage_connections.item():
             storage.update_meta(docs)
 
+def postreport_update_worker():
+    queue = postreport_state['update-queue'] # shortcut
+    while True: # outer forever loop
+        docs = []
+        while len(docs) < POSTREPORT_FLUSH_SIZE: # inner accumulator loop
+            try:
+                item = queue.get(timeout=POSTREPORT_FLUSH_DELAY)
+                docs.append(item)
+            except eventlet.queue.Empty:
+                break
+        if not docs:
+            continue
+        with storage_connections.item():
+            storage.update_meta(docs)
+postreport_state['update-worker'] = eventlet.spawn(postreport_update_worker)
+
 @log_exceptions
 def crawl_queue(request):
     limit = int(request.POST['limit'])

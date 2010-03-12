@@ -34,7 +34,7 @@ class ManagerTestCase(unittest.TestCase):
 
         smock.mock('storage.query_meta_new_random', returns=[])
         manager.crawl_queue(req)
-        self.assertTrue(smock.is_called('storage.query_meta_new_random', manager.MAX_LIMIT))
+        self.assertTrue(smock.is_called('storage.query_meta_new_random', manager.PREFETCH_SINGLE_LIMIT))
 
     def test_get_002(self):
         """Must return list of items fetched from storage."""
@@ -46,7 +46,9 @@ class ManagerTestCase(unittest.TestCase):
         items = [{'url': "http://url1/", 'visited': None},
                  {'url': "http://url2/", 'visited': None},
                  {'url': "http://url3/", 'visited': None}]
-        smock.mock('storage.query_meta_new_random', returns=items[:])
+        items_copy = items[:]
+        smock.mock('storage.query_meta_new_random',
+                   returns_func=lambda *a, **kw: [items_copy.pop()] if items_copy else [])
         result = manager.crawl_queue(req)
         self.assertEqual(sorted(items), sorted(result))
 
@@ -60,7 +62,9 @@ class ManagerTestCase(unittest.TestCase):
         items = [{'url': "http://url1/", 'visited': None},
                  {'url': "http://url2/", 'visited': None},
                  {'url': "http://url3/", 'visited': None}]
-        smock.mock('storage.query_meta_new_random', returns=items[:])
+        items_copy = items[:]
+        smock.mock('storage.query_meta_new_random',
+                   returns_func=lambda *a, **kw: [items_copy.pop()] if items_copy else [])
         result = manager.crawl_queue(req)
         self.assertTrue(len(result) <= 2)
 
