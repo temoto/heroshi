@@ -148,7 +148,12 @@ class Crawler(object):
         result = {}
 
         parsed = urlparse.urlsplit(uri)
-        addr = self.resolver.gethostbyname(parsed.hostname)
+        try:
+            addr = self.resolver.gethostbyname(parsed.hostname)
+        except dns.DnsError, e:
+            log.info(u"DNS error at %s", uri)
+            result['result'] = u"DNS Error: " + unicode(e)
+            return result
         conn_key = addr
         request_uri = uri.replace(parsed.hostname, addr, 1)
         request_headers = {'user-agent': settings.identity['user_agent'],
