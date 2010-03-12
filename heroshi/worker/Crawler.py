@@ -150,7 +150,7 @@ class Crawler(object):
         parsed = urlparse.urlsplit(uri)
         addr = self.resolver.gethostbyname(parsed.hostname)
         conn_key = addr
-        request_uri = uri.replace(parsed.hostname, addr)
+        request_uri = uri.replace(parsed.hostname, addr, 1)
         request_headers = {'user-agent': settings.identity['user_agent'],
                            'host': parsed.hostname}
         with self._connections.getc(conn_key, timeout=settings.socket_timeout) as conn:
