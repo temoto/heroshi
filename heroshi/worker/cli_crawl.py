@@ -44,7 +44,7 @@ def main():
     try:
         crawler.crawl(forever=len(args) == 0)
     except KeyboardInterrupt:
-        pass
+        crawler.graceful_stop()
 
 
 if __name__ == '__main__':
