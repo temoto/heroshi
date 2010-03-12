@@ -1,5 +1,4 @@
 import eventlet
-import httplib
 # pylint-silence unused imports required for mocking
 import httplib2 # pylint: disable-msg=W0611
 import smock
@@ -17,7 +16,7 @@ DEFAULT_TIMEOUT = 0.02
 
 
 def make_http_response(status_code):
-    response = httplib.HTTPResponse(socket.socket())
+    response = httplib2.Response({})
     response.status = status_code
     return response
 
