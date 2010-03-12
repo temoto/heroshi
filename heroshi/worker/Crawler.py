@@ -7,14 +7,14 @@ import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib2
-import random, socket, sys, time
+import random, socket, sys, time, urlparse
 import robotparser
 
-from heroshi.data import PoolMap, Link, Page
+from heroshi.data import Link, Page, PoolMap
 from heroshi.conf import settings
 from heroshi.error import ApiError, CrawlError, FetchError
 from heroshi import TIME_FORMAT
-from heroshi import api, error, misc
+from heroshi import api, dns, error, misc
 log = misc.get_logger("worker.Crawler")
 
 eventlet.monkey_patch(all=False, socket=True, select=True)
@@ -35,6 +35,7 @@ class Crawler(object):
         self._robots_cache = PoolMap(self.get_robots_checker,
                                      pool_max_size=1,
                                      timeout=600)
+        self.resolver = dns.CachingResolver()
 
         log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
@@ -138,31 +139,47 @@ class Crawler(object):
         except ApiError:
             log.exception(u"report_item")
 
-    def fetch(self, uri, scheme, authority):
+    def fetch(self, uri, _redirect_counter=0):
+        # FIXME: magic number
+        if _redirect_counter >= 7:
+            return {'result': u"Too many redirects."}
         log.debug(u"  fetching: %s.", uri)
 
         result = {}
 
-        conn_key = scheme+":"+authority
-        conn = self._connections.get(conn_key, timeout=settings.socket_timeout)
-        try:
-            response, content = conn.request(uri, headers={'user-agent': settings.identity['user_agent']})
-        except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
-            raise
-        except socket.timeout:
-            log.info(u"Socket timeout at %s", uri)
-            result['result'] = u"Socket timeout"
-        except Exception, e:
-            log.warning(u"HTTP error at %s: %s", uri, str(e))
-            result['result'] = u"HTTP Error: " + unicode(e)
-        else:
-            result['result'] = u"OK"
-            result['status_code'] = response.status
-            # TODO: update tests for this to work
-            #result['headers'] = response.getheaders()
-            result['content'] = content
-        finally:
-            self._connections.put(conn_key, conn)
+        parsed = urlparse.urlsplit(uri)
+        addr = self.resolver.gethostbyname(parsed.hostname)
+        conn_key = addr
+        request_uri = uri.replace(parsed.hostname, addr)
+        request_headers = {'user-agent': settings.identity['user_agent'],
+                           'host': parsed.hostname}
+        with self._connections.getc(conn_key, timeout=settings.socket_timeout) as conn:
+            conn.follow_redirects = False
+            try:
+                response, content = conn.request(request_uri, headers=request_headers)
+            except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
+                raise
+            except socket.timeout:
+                log.info(u"Socket timeout at %s", uri)
+                result['result'] = u"Socket timeout"
+            except Exception, e:
+                log.warning(u"HTTP error at %s: %s", uri, str(e))
+                result['result'] = u"HTTP Error: " + unicode(e)
+            else:
+                result['result'] = u"OK"
+                result['status_code'] = response.status
+                # TODO: update tests for this to work
+                result['headers'] = dict(response)
+                result['content'] = content
+
+        if result.get('result') == u"OK" and response.status in (301, 302):
+            new_location = response.get('location')
+            if new_location is not None:
+                result = self.fetch(new_location, _redirect_counter=_redirect_counter+1)
+                result.setdefault('redirects', []).append( (response.status, new_location) )
+                return result
+            else:
+                result['result'] = u"HTTP Error: redirect w/o location"
 
         return result
 
@@ -170,7 +187,7 @@ class Crawler(object):
         """PoolMap func :: scheme, authority -> (agent, uri -> bool)."""
         robots_uri = "%s://%s/robots.txt" % (scheme, authority)
 
-        fetch_result = self.fetch(robots_uri, scheme, authority)
+        fetch_result = self.fetch(robots_uri)
         if fetch_result['result'] == u"OK":
             # TODO: set expiration time from headers
             # but this must be done after `self._robots_cache.put` or somehow else...
@@ -227,7 +244,7 @@ class Crawler(object):
                 assert False, u"This branch should not be executed."
 
             fetch_start_time = time.time()
-            fetch_result = self.fetch(uri, scheme, authority)
+            fetch_result = self.fetch(uri)
             fetch_end_time = time.time()
             report['fetch_time'] = fetch_end_time - fetch_start_time
             report.update(fetch_result)

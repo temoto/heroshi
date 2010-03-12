@@ -2,7 +2,6 @@ import eventlet
 import httplib
 # pylint-silence unused imports required for mocking
 import httplib2 # pylint: disable-msg=W0611
-import socket
 import smock
 import unittest
 
@@ -72,9 +71,9 @@ class WorkerTestCase(unittest.TestCase):
         NUM_ITEMS = self.client.max_connections_per_host * 2
         REQUEST_PAUSE = 0.05
         def mock_httplib2_request_sleep(url, *args, **kwargs): # pylint: disable-msg=W0613
-            flags['max_count'] = max(flags['max_count'], self.client.get_active_connections_count('http:localhost'))
+            flags['max_count'] = max(flags['max_count'], self.client.get_active_connections_count('127.0.0.1'))
             eventlet.sleep(REQUEST_PAUSE)
-            raise socket.timeout()
+            return make_http_response(404), ""
 
         smock.mock('api.get_crawl_queue', returns=[])
         smock.mock('api.report_result', returns=None)
@@ -161,59 +160,60 @@ class RobotsTestCase(unittest.TestCase):
     def test_self_001(self):
         """Quick self-test for testcase: fail on non-registered URI."""
 
+        self.client.resolver.cache['dummy-valid.url'] = ['127.0.0.1']
         self.client.queue.put({'url': "http://dummy-valid.url/", 'visited': None, 'links': []})
         self.assertRaises(AssertionError, self.run_crawler)
 
     def test_request_robots_first(self):
         """For each new domain/port pair, must first request for /robots.txt."""
 
-        self.uris.append("http://localhost/test_request_robots_first_link")
+        self.uris.append("http://127.0.0.1/test_request_robots_first_link")
         self.on_unexpected_uri = '200'
         self.run_crawler()
-        self.assertTrue(self.requested[0] == "http://localhost/robots.txt")
+        self.assertTrue(self.requested[0] == "http://127.0.0.1/robots.txt")
 
     def test_robots_401(self):
         """Must not crawl URL if /robots.txt yields 401."""
 
-        URI = "http://localhost/test_robots_401_link"
+        URI = "http://127.0.0.1/test_robots_401_link"
         self.uris.append(URI)
-        self.responses["http://localhost/robots.txt"] = 401, ""
+        self.responses["http://127.0.0.1/robots.txt"] = 401, ""
         self.run_crawler()
         self.assertTrue(URI not in self.requested)
 
     def test_robots_403(self):
         """Must not crawl URL if /robots.txt yields 403."""
 
-        URI = "http://localhost/test_robots_403_link"
+        URI = "http://127.0.0.1/test_robots_403_link"
         self.uris.append(URI)
-        self.responses["http://localhost/robots.txt"] = 403, ""
+        self.responses["http://127.0.0.1/robots.txt"] = 403, ""
         self.run_crawler()
         self.assertTrue(URI not in self.requested)
 
     def test_robots_404(self):
         """Must crawl URL if /robots.txt yields 404."""
 
-        URI = "http://localhost/test_robots_404_link"
+        URI = "http://127.0.0.1/test_robots_404_link"
         self.uris.append(URI)
-        self.handlers["http://localhost/robots.txt"] = self.default_hanlder_404
+        self.handlers["http://127.0.0.1/robots.txt"] = self.default_hanlder_404
         self.run_crawler()
         self.assertTrue(URI in self.requested)
 
     def test_robots_empty(self):
         """Must crawl URL if /robots.txt is empty."""
 
-        URI = "http://localhost/test_robots_empty_link"
+        URI = "http://127.0.0.1/test_robots_empty_link"
         self.uris.append(URI)
-        self.responses["http://localhost/robots.txt"] = 200, ""
+        self.responses["http://127.0.0.1/robots.txt"] = 200, ""
         self.run_crawler()
         self.assertTrue(URI in self.requested)
 
     def test_robots_allows_all_to_star(self):
         """Must crawl URL if /robots.txt allows all robots everything."""
 
-        URI = "http://localhost/test_robots_allows_all_to_star_link"
+        URI = "http://127.0.0.1/test_robots_allows_all_to_star_link"
         self.uris.append(URI)
-        self.responses["http://localhost/robots.txt"] = 200, "\
+        self.responses["http://127.0.0.1/robots.txt"] = 200, "\
 User-agent: *\r\n\
 Disallow:"
         self.run_crawler()
@@ -222,9 +222,9 @@ Disallow:"
     def test_robots_disallows_all_to_star(self):
         """Must not crawl URL if /robots.txt disallows all robots everything."""
 
-        URI = "http://localhost/test_robots_allows_all_to_star_link"
+        URI = "http://127.0.0.1/test_robots_allows_all_to_star_link"
         self.uris.append(URI)
-        self.responses["http://localhost/robots.txt"] = 200, "\
+        self.responses["http://127.0.0.1/robots.txt"] = 200, "\
 User-agent: *\r\n\
 Disallow: /"
         self.run_crawler()
@@ -233,9 +233,9 @@ Disallow: /"
     def test_robots_disallows_all_to_heroshi(self):
         """Must not crawl URL if /robots.txt disallows HeroshiBot everything."""
 
-        URI = "http://localhost/test_robots_disallows_all_to_heroshi"
+        URI = "http://127.0.0.1/test_robots_disallows_all_to_heroshi"
         self.uris.append(URI)
-        self.responses["http://localhost/robots.txt"] = 200, "\
+        self.responses["http://127.0.0.1/robots.txt"] = 200, "\
 User-agent: HeroshiBot\r\n\
 Disallow: /"
         self.run_crawler()
