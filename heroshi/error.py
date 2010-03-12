@@ -48,3 +48,7 @@ class CrawlError(Error):
 
 class FetchError(CrawlError):
     pass
+
+
+class RobotsError(CrawlError):
+    pass

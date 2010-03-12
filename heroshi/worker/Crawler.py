@@ -13,7 +13,7 @@ import robotparser
 from heroshi.data import Link, Page, PoolMap
 from heroshi.data.Page import PageParseError
 from heroshi.conf import settings
-from heroshi.error import ApiError, CrawlError, FetchError
+from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 from heroshi import TIME_FORMAT
 from heroshi import api, dns, error, misc
 log = misc.get_logger("worker.Crawler")
@@ -223,7 +223,11 @@ class Crawler(object):
     def ask_robots(self, uri, scheme, authority):
         key = scheme+":"+authority
         with self._robots_cache.getc(key, scheme, authority) as checker:
-            return checker(settings.identity['name'], uri)
+            try:
+                return checker(settings.identity['name'], uri)
+            except Exception, e:
+                log.exception(u"Get rid of this. ask_robots @ %s", uri)
+                raise RobotsError(u"Error checking robots.txt permissions for URI '%s': %s" % (uri, unicode(e)))
 
     def do_process(self, item):
         report = self._process(item)
@@ -246,7 +250,7 @@ class Crawler(object):
         else:
             try:
                 robot_check_result = self.ask_robots(uri, scheme, authority)
-            except FetchError, e:
+            except (FetchError, RobotsError), e:
                 report['result'] = unicode(e)
                 return report
             if robot_check_result == True:
