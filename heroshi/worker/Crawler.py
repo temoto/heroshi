@@ -168,6 +168,7 @@ class Crawler(object):
                 log.info(u"Socket timeout at %s", uri)
                 result['result'] = u"Socket timeout"
             except Exception, e:
+                log.exception(u"Get rid of this. fetch @ %s", uri)
                 log.warning(u"HTTP error at %s: %s", uri, str(e))
                 result['result'] = u"HTTP Error: " + unicode(e)
             else:
@@ -265,6 +266,7 @@ class Crawler(object):
             except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
                 raise
             except Exception, e:
+                log.exception(u"Get rid of this. _process @ %s", uri)
                 report['result'] = u"Parse Error: " + unicode(e)
             else:
                 report['links'] = [ link.full for link in page.links ]
