@@ -34,6 +34,8 @@ class CachingResolver(object):
         """hostname -> ([addr], ttl)"""
         try:
             _primary_hostname, _aliases, addrs = tpool.execute(socket.gethostbyname_ex, hostname)
+        except TypeError, e:
+            raise DnsError(unicode(e))
         except socket.gaierror, (err, desc):
             # This is actually a bug in gethostbyname_ex: it returns EAI_NODATA for both cases
             # nxdomain and noerror with zero A records.
