@@ -2,10 +2,17 @@
 """TODO"""
 
 from BeautifulSoup import BeautifulSoup
+import HTMLParser
 
+from heroshi import error
 from heroshi.data import Link
 from heroshi.misc import get_logger
 log = get_logger("data.Page")
+
+
+class PageParseError(error.Error):
+    """Page parsing error."""
+    pass
 
 
 class Page(object):
@@ -21,7 +28,10 @@ class Page(object):
         self.visited = None
 
     def parse(self):
-        soup = BeautifulSoup(self.html_content)
+        try:
+            soup = BeautifulSoup(self.html_content)
+        except HTMLParser.HTMLParseError, e:
+            raise PageParseError(u"HTML Parse Error: " + unicode(e))
         self.text_content = u''.join( e for e in soup.recursiveChildGenerator() if isinstance(e, unicode) )
 #        log.debug("parsed %d bytes of HTML into %d bytes of raw text",
 #                len(self.html_content), len(self.text_content))

@@ -6,11 +6,12 @@ from datetime import datetime
 import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
-import httplib2
+import httplib, httplib2
 import random, socket, sys, time, urlparse
 import robotparser
 
 from heroshi.data import Link, Page, PoolMap
+from heroshi.data.Page import PageParseError
 from heroshi.conf import settings
 from heroshi.error import ApiError, CrawlError, FetchError
 from heroshi import TIME_FORMAT
@@ -167,6 +168,9 @@ class Crawler(object):
             except socket.timeout:
                 log.info(u"Socket timeout at %s", uri)
                 result['result'] = u"Socket timeout"
+            except httplib.BadStatusLine, e:
+                log.info(u"HTTP Error at %s: %s", uri, unicode(e))
+                result['result'] = u"HTTP Error: " + unicode(e)
             except Exception, e:
                 log.exception(u"Get rid of this. fetch @ %s", uri)
                 log.warning(u"HTTP error at %s: %s", uri, str(e))
@@ -265,6 +269,8 @@ class Crawler(object):
                 page.parse()
             except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
                 raise
+            except PageParseError, e:
+                report['result'] = unicode(e)
             except Exception, e:
                 log.exception(u"Get rid of this. _process @ %s", uri)
                 report['result'] = u"Parse Error: " + unicode(e)
