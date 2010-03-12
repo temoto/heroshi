@@ -216,6 +216,10 @@ class Crawler(object):
             return checker(settings.identity['name'], uri)
 
     def do_process(self, item):
+        report = self._process(item)
+        self.report_item(report)
+
+    def _process(self, item):
         url = item['url']
         log.debug(u"Crawling: %s", url)
         uri = httplib2.iri2uri(url)
@@ -262,4 +266,4 @@ class Crawler(object):
 
         timestamp = datetime.now().strftime(TIME_FORMAT)
         report['visited'] = timestamp
-        self.report_item(report)
+        return report
