@@ -9,6 +9,7 @@ import eventlet, eventlet.pools, eventlet.queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
 
 from heroshi import storage
+from heroshi.data import Cache
 from heroshi.conf import settings
 from heroshi.misc import get_logger, log_exceptions
 log = get_logger("manager")
@@ -27,6 +28,7 @@ STORAGE_MAX_CONNECTIONS = 4
 prefetch_queue = eventlet.Queue(PREFETCH_QUEUE_SIZE)
 prefetch_worker_pool = eventlet.pools.Pool(max_size=1)
 prefetch_worker_pool.create = lambda: eventlet.spawn(prefetch_worker)
+given_items = Cache()
 postreport_queue = eventlet.Queue(POSTREPORT_QUEUE_SIZE)
 postreport_worker_pool = eventlet.pools.Pool(max_size=1)
 postreport_worker_pool.create = lambda: eventlet.spawn(postreport_worker)
@@ -61,6 +63,12 @@ def postreport_worker():
         while len(docs) < POSTREPORT_FLUSH_SIZE: # inner accumulator loop
             try:
                 item = postreport_queue.get(timeout=POSTREPORT_FLUSH_DELAY)
+                try:
+                    old_doc = given_items[item['url']]
+                    old_doc.update(item)
+                    item = old_doc
+                except KeyError:
+                    pass
                 docs.append(item)
             except eventlet.queue.Empty:
                 break
@@ -96,6 +104,8 @@ def crawl_queue(request):
     with prefetch_worker_pool.item():
         pass
     doc_list = get_from_prefetch_queue(limit)
+    for doc in doc_list:
+        given_items.set(doc['url'], doc, 300)
 
     def is_old(doc):
         visited_str = doc['visited']
