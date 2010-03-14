@@ -16,7 +16,7 @@ Identity
 
 Heroshi identifies itself with::
 
-    user-agent: HeroshiBot/version (+http://github.com/temoto/heroshi; temotor@gmail.com)
+    user-agent: HeroshiBot/version (+http://temoto.github.com/heroshi/; temotor@gmail.com)
 
 Load problems
 -------------

@@ -3,7 +3,7 @@ log:
 
 identity:
     name: "HeroshiBot"
-    user_agent: "HeroshiBot/0.3 (+http://github.com/temoto/heroshi; temotor@gmail.com)"
+    user_agent: "HeroshiBot/0.3 (+http://temoto.github.com/heroshi/; temotor@gmail.com)"
 
 full_queue_pause: 10
 socket_timeout: 60
