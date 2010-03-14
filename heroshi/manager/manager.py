@@ -5,7 +5,8 @@ __all__ = ['crawl_queue', 'report_result']
 import cjson
 import datetime
 import dateutil.parser
-import random
+import eventlet, eventlet.pools, eventlet.queue
+eventlet.monkey_patch(all=False, socket=True, select=True)
 
 from heroshi import storage
 from heroshi.conf import settings
@@ -15,7 +16,58 @@ log = get_logger("manager")
 
 MAX_LIMIT = 1000
 MIN_VISIT_TIMEDELTA = datetime.timedelta(hours=6)
+PREFETCH_SINGLE_LIMIT = 100
+PREFETCH_QUEUE_SIZE = 100
+PREFETCH_GET_TIMEOUT = 0.2
+POSTREPORT_QUEUE_SIZE = 10*1000
+POSTREPORT_FLUSH_SIZE = 1000
+POSTREPORT_FLUSH_DELAY = 10
+STORAGE_MAX_CONNECTIONS = 4
 
+prefetch_queue = eventlet.Queue(PREFETCH_QUEUE_SIZE)
+prefetch_worker_pool = eventlet.pools.Pool(max_size=1)
+prefetch_worker_pool.create = lambda: eventlet.spawn(prefetch_worker)
+postreport_queue = eventlet.Queue(POSTREPORT_QUEUE_SIZE)
+postreport_worker_pool = eventlet.pools.Pool(max_size=1)
+postreport_worker_pool.create = lambda: eventlet.spawn(postreport_worker)
+storage_connections = eventlet.pools.TokenPool(max_size=STORAGE_MAX_CONNECTIONS)
+
+
+def get_from_prefetch_queue(size):
+    result = []
+    while len(result) < size:
+        eventlet.sleep()
+        try:
+            pack = prefetch_queue.get(timeout=PREFETCH_GET_TIMEOUT)
+        except eventlet.queue.Empty:
+            break
+        result.extend(pack)
+    return result
+
+def prefetch_worker():
+    while True:
+        with storage_connections.item():
+            docs = storage.query_meta_new_random(PREFETCH_SINGLE_LIMIT)
+        if len(docs) == 0:
+            eventlet.sleep(0.01)
+            continue
+        else:
+            # Note: putting a *list* as a single item into queue
+            prefetch_queue.put(docs)
+
+def postreport_worker():
+    while True: # outer forever loop
+        docs = []
+        while len(docs) < POSTREPORT_FLUSH_SIZE: # inner accumulator loop
+            try:
+                item = postreport_queue.get(timeout=POSTREPORT_FLUSH_DELAY)
+                docs.append(item)
+            except eventlet.queue.Empty:
+                break
+        if not docs:
+            continue
+        with storage_connections.item():
+            storage.update_meta(docs)
 
 @log_exceptions
 def crawl_queue(request):
@@ -25,8 +77,9 @@ def crawl_queue(request):
 
     time_now = datetime.datetime.now()
 
-    # TODO: make it faster
-    doc_list = storage.query_meta_new_random(MAX_LIMIT)
+    with prefetch_worker_pool.item():
+        pass
+    doc_list = get_from_prefetch_queue(limit)
 
     def is_old(doc):
         visited_str = doc['visited']
@@ -38,9 +91,6 @@ def crawl_queue(request):
 
     doc_list = filter(is_old, doc_list)
 
-    random.shuffle(doc_list)
-    doc_list = doc_list[:limit]
-
     def make_queue_item(doc):
         filter_fields = ('url', 'headers', 'visited',)
         return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
@@ -51,6 +101,9 @@ def crawl_queue(request):
 @log_exceptions
 def report_result(request):
     report = cjson.decode(request.body)
+
+    with postreport_worker_pool.item():
+        pass
 
     links = report.pop('links', [])
     # FIXME: magic number
@@ -66,12 +119,11 @@ def report_result(request):
         if doc is not None:
             doc.update(report)
             doc['links_count'] = len(links)
-            if not storage.save_meta(doc, raise_conflict=False):
-                return None
+            postreport_queue.put(doc)
         else:
             print"-=============- UNEXPECTED not found doc for URL", report['url']
             # new link
-            storage.save_meta(report, raise_conflict=False)
+            postreport_queue.put(doc)
 
     # put links into queue
     # 1. remove duplicates
@@ -83,11 +135,8 @@ def report_result(request):
             (url.endswith("/") or url_lower.endswith("html") or url_lower.endswith("php"))
 
     links = filter(url_filter, links)
-
-    def make_new_doc(url):
-        return {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
-
-    new_docs = map(make_new_doc, links)
-    storage.update_meta(new_docs)
+    for url in links:
+        new_doc = {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
+        postreport_queue.put(new_doc)
 
     return None

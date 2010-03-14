@@ -20,6 +20,10 @@ class ManagerTestCase(unittest.TestCase):
     def tearDown(self):
         smock.cleanup()
         conf_from_dict({})
+        with manager.prefetch_worker_pool.item() as pre_w:
+            pre_w.kill()
+        with manager.postreport_worker_pool.item() as post_w:
+            post_w.kill()
 
     def test_get_001(self):
         """Must call `storage.query_meta_new_random`."""
