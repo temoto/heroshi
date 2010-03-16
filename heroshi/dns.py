@@ -45,6 +45,8 @@ class CachingResolver(object):
                 return NoAddressError(unicode(desc+": "+hostname)), NX_TTL
             else:
                 raise DnsError(unicode(desc+": "+hostname))
+        except socket.herror, (_err, desc):
+            raise DnsError(unicode(desc+": "+hostname))
         else:
             return addrs, DEFAULT_TTL
         assert False, u"CachingResolver.resolve() supposed to return somewhere earlier."
