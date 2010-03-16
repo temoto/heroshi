@@ -1,7 +1,8 @@
 # coding: utf-8
 from contextlib import contextmanager
-from eventlet import spawn_after
 from eventlet.pools import Pool
+
+from .Cache import Cache
 
 
 class PoolMap(object):
@@ -9,18 +10,15 @@ class PoolMap(object):
         self.func = func
         self.timeout = timeout
         self.pool_max_size = pool_max_size
-        self._pools = {}
-        self._timers = {}
+        self._pools = Cache()
 
     def get(self, key, *args, **kwargs):
-        if key in self._pools:
+        try:
             pool = self._pools[key]
-        else:
-            pool = Pool(max_size=self.pool_max_size)
+            self._pools.stop_timer(key)
+        except KeyError:
+            pool = self._pools[key] = Pool(max_size=self.pool_max_size)
             pool.create = lambda: self.func(*args, **kwargs)
-            self._pools[key] = pool
-        if self.timeout is not None:
-            self.stop_timer(key)
 
         return pool.get()
 
@@ -37,21 +35,7 @@ class PoolMap(object):
         # this must be done after `pool.put(value)`, because pool's free counter gets updated then
         if self.timeout is not None:
             if pool.free() >= pool.max_size:
-                self.reset_timer(key)
-
-    def stop_timer(self, key):
-        if key in self._timers:
-            timer = self._timers.pop(key)
-            timer.cancel()
-
-    def reset_timer(self, key, timeout=None):
-        self.stop_timer(key)
-
-        def fun():
-            self._pools.pop(key)
-            self._timers.pop(key)
-
-        self._timers[key] = spawn_after(timeout or self.timeout, fun)
+                self._pools.reset_timer(key, self.timeout)
 
     def __unicode__(self):
         return u"<PoolMap of %d pools>" % (len(self._pools),)
