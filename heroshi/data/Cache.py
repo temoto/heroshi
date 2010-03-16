@@ -24,8 +24,8 @@ class Cache(dict):
             self.reset_timer(key, timeout)
 
     def stop_timer(self, key):
-        if key in self._timers:
-            timer = self._timers.pop(key)
+        timer = self._timers.pop(key, None)
+        if timer is not None:
             timer.cancel()
 
     def reset_timer(self, key, timeout):
