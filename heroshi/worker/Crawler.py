@@ -264,7 +264,7 @@ class Crawler(object):
             fetch_start_time = time.time()
             fetch_result = self.fetch(uri)
             fetch_end_time = time.time()
-            report['fetch_time'] = fetch_end_time - fetch_start_time
+            report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
             report.update(fetch_result)
 
         if report['status_code'] == 200:
