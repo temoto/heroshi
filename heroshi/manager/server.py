@@ -1,18 +1,19 @@
+from base64 import b64encode
 import cjson
 import eventlet, eventlet.pools, eventlet.wsgi
+import hashlib
 import webob
 import webob.exc
-from base64 import b64encode
-import hashlib
 
 from heroshi.conf import settings
 from heroshi.misc import gzip_string, get_logger
-from heroshi.wsgi import method_dispatcher
 log = get_logger("manager.server")
+from heroshi.wsgi import method_dispatcher
 from .manager import Manager
 
 
 AUTH_HEADER = "X-Heroshi-Auth"
+MIN_COMPRESS_LENGTH = 400
 manager_pool = eventlet.pools.Pool(max_size=1)
 manager_pool.create = Manager
 
@@ -36,7 +37,6 @@ urls = {
     '/report':      dict(PUT='report_result'),
 }
 
-MIN_COMPRESS_LENGTH = 400
 
 def server(request):
     handler_map = urls.get(request.path)
