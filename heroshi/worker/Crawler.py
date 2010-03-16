@@ -30,7 +30,7 @@ class Crawler(object):
         self.queue = Queue(self.max_queue_size)
         self.closed = False
         self._handler_pool = GreenPool(self.max_connections)
-        self._connections = PoolMap(httplib2.Http,
+        self._connections = PoolMap(lambda: httplib2.Http(timeout=settings.socket_timeout),
                                     pool_max_size=self.max_connections_per_host,
                                     timeout=120)
         self._robots_cache = PoolMap(self.get_robots_checker,
@@ -159,7 +159,7 @@ class Crawler(object):
         request_uri = uri.replace(parsed.hostname, addr, 1)
         request_headers = {'user-agent': settings.identity['user_agent'],
                            'host': parsed.hostname}
-        with self._connections.getc(conn_key, timeout=settings.socket_timeout) as conn:
+        with self._connections.getc(conn_key) as conn:
             conn.follow_redirects = False
             try:
                 response, content = conn.request(request_uri, headers=request_headers)
