@@ -1,71 +1,66 @@
-from __future__ import with_statement
-import couchdb.client as couchdb
-import hashlib
-import os
+# coding: utf-8
+
+__all__ = ['StorageConnection']
+
+import couchdbkit as couchdb
 import random
 
 from heroshi.conf import settings
-from heroshi.misc import os_path_expand, get_logger
+from heroshi.misc import get_logger
 log = get_logger("storage")
 
 
-def get_hash_path(root, string):
-    hash_ = hashlib.sha1(string).hexdigest()
-    path = os.path.join(root, hash_[:2], hash_[2:4], hash_[4:])
-    path = os_path_expand(path)
-    return path
+class StorageConnection(object):
+    def __init__(self):
+        self._server = couchdb.Server(settings.storage['couchdb_url'])
+        self._db = self._server[settings.storage['db_name']]
 
-def save_content(root, url, content):
-    path = get_hash_path(root, url)
-    path_dir = os.path.dirname(path)
-    if not os.path.isdir(path_dir):
-        os.makedirs(path_dir)
-    with open(path, 'wb') as f:
-        f.write(content.encode('utf-8'))
+    def save_content(self, doc, content, content_type):
+        if doc.get('_attachments', {}).get("content", {}).get("length", -1) == len(content):
+            log.debug(u"Skipping update with same length.")
+            return
+        self._db.put_attachment(doc, content, name="content", content_type=content_type)
 
-def save_meta(data, raise_conflict=True):
-    server = couchdb.Server(settings.couchdb_url)
-    db = server['heroshi']
-    id_ = data['url']
-    try:
-        db[id_] = data
-        return True
-    except couchdb.ResourceConflict:
-        if raise_conflict:
-            raise
-    except couchdb.ServerError:
-        log.exception("")
+    def get_content(self, doc=None, url=None):
+        raise NotImplementedError()
 
-def update_meta(items):
-    server = couchdb.Server(settings.couchdb_url)
-    db = server['heroshi']
-    try:
-        update_results = db.update(items)
-        return update_results
-    except couchdb.ResourceConflict:
-        pass
-#         log.error("resource conflict for items", items)
-    except couchdb.ServerError:
-        log.exception("")
+    def save(self, data, raise_conflict=True, force_update=False, batch='ok'):
+        data['_id'] = data['url']
+        try:
+            res = self._db.save_doc(data, force_update=force_update, batch=batch)
+            data['_rev'] = res['rev']
+            return True
+        except couchdb.ResourceConflict:
+            if raise_conflict:
+                raise
+        except couchdb.RequestFailed:
+            log.exception(u"save")
 
-def _query_meta_view(view, limit, **kwargs):
-    server = couchdb.Server(settings.couchdb_url)
-    db = server['heroshi']
+    def update(self, items, raise_conflict=True, all_or_nothing=False, ensure_commit=False):
+        try:
+            update_results = self._db.bulk_save(items, use_uuids=False, all_or_nothing=all_or_nothing)
+            if ensure_commit:
+                self._db.ensure_full_commit()
+            return update_results
+        except couchdb.BulkSaveError:
+            if raise_conflict:
+                raise
+        except couchdb.RequestFailed:
+            log.exception(u"update")
 
-    params = {'include_docs': True}
-    params.update(kwargs)
-    if limit:
-        params['limit'] = limit
+    def _query_view(self, view, limit, **params):
+        result_gen = self._db.view(view, include_docs=True, limit=limit, **params)
+        return [ r['doc'] for r in result_gen ]
 
-    result_gen = db.view(view, **params)
-    return [ r.doc for r in result_gen ]
+    def query_all_by_url(self, url, limit=1, stale='ok', **params):
+        return self._query_view("all/by-url", limit, startkey=url, stale=stale, **params)
 
-def query_meta_by_url(url, limit=1):
-    return _query_meta_view("_design/queue/_view/by-url", limit, key=url)
+    def query_all_by_url_one(self, url):
+        results = self.query_all_by_url(url=None, limit=1, key=url)
+        return results[0] if results else None
 
-def query_meta_by_url_one(url):
-    results = query_meta_by_url(url, 1)
-    return results[0] if results else None
+    def query_new_random(self, limit=None):
+        return self._query_view("queue/new-random", limit, startkey=random.random(), stale='ok')
 
-def query_meta_new_random(limit=None):
-    return _query_meta_view("_design/queue/_view/new-random", limit, stale='ok', startkey=random.random())
+    def query_visited_by_url(self, url=None, limit=None, stale='ok', **params):
+        return self._query_view("visited/by-url", limit, startkey=url, stale=stale, **params)

@@ -1,168 +1,175 @@
 """Heroshi URL server implementation main module."""
 
-__all__ = ['crawl_queue', 'report_result']
+__all__ = ['Manager']
 
 import cjson
 import datetime
 import dateutil.parser
 import eventlet, eventlet.pools, eventlet.queue
+from eventlet import spawn, sleep, Queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
+from pprint import pformat
+import random
 
-from heroshi import storage
 from heroshi.data import Cache
 from heroshi.conf import settings
 from heroshi.misc import get_logger, log_exceptions
 log = get_logger("manager")
+from heroshi.profile import Profile
+from heroshi.storage import StorageConnection
 
 
-MAX_LIMIT = 1000
-MIN_VISIT_TIMEDELTA = datetime.timedelta(hours=6)
-PREFETCH_SINGLE_LIMIT = 100
-PREFETCH_QUEUE_SIZE = 100
-PREFETCH_GET_TIMEOUT = 0.2
-POSTREPORT_QUEUE_SIZE = 10*1000
-POSTREPORT_FLUSH_SIZE = 1000
-POSTREPORT_FLUSH_DELAY = 10
-STORAGE_MAX_CONNECTIONS = 4
+class Manager(object):
+    """Class encapsulating Heroshi URL server state."""
 
-prefetch_queue = eventlet.Queue(PREFETCH_QUEUE_SIZE)
-prefetch_worker_pool = eventlet.pools.Pool(max_size=1)
-prefetch_worker_pool.create = lambda: eventlet.spawn(prefetch_worker)
-given_items = Cache()
-postreport_queue = eventlet.Queue(POSTREPORT_QUEUE_SIZE)
-postreport_worker_pool = eventlet.pools.Pool(max_size=1)
-postreport_worker_pool.create = lambda: eventlet.spawn(postreport_worker)
-storage_connections = eventlet.pools.TokenPool(max_size=STORAGE_MAX_CONNECTIONS)
+    def __init__(self):
+        self.active = False
+        self.prefetch_queue = Queue(settings.prefetch['queue_size'])
+        self.prefetch_thread = spawn(self.prefetch_worker)
+        self.given_items = Cache()
+        self.postreport_queue = Queue(settings.postreport['queue_size'])
+        self.postreport_thread = spawn(self.postreport_worker)
+        self.storage_connections = eventlet.pools.Pool(max_size=settings.storage['max_connections'])
+        self.storage_connections.create = StorageConnection
 
+    def close(self):
+        self.active = False
+        self.prefetch_thread.kill()
+        self.postreport_thread.kill()
 
-def get_from_prefetch_queue(size):
-    result = []
-    while len(result) < size:
-        eventlet.sleep()
-        try:
-            pack = prefetch_queue.get(timeout=PREFETCH_GET_TIMEOUT)
-        except eventlet.queue.Empty:
-            break
-        result.extend(pack)
-    return result
-
-def prefetch_worker():
-    while True:
-        with storage_connections.item():
-            docs = storage.query_meta_new_random(PREFETCH_SINGLE_LIMIT)
-        if len(docs) == 0:
-            eventlet.sleep(0.01)
-            continue
-        else:
-            # Note: putting a *list* as a single item into queue
-            prefetch_queue.put(docs)
-
-def postreport_worker():
-    while True: # outer forever loop
-        docs = []
-        while len(docs) < POSTREPORT_FLUSH_SIZE: # inner accumulator loop
+    def get_from_prefetch_queue(self, size):
+        result = []
+        while len(result) < size:
+            sleep()
             try:
-                item = postreport_queue.get(timeout=POSTREPORT_FLUSH_DELAY)
+                pack = self.prefetch_queue.get(timeout=settings.prefetch['get_timeout'])
+            except eventlet.queue.Empty:
+                break
+            result.extend(pack)
+        return result
+
+    def prefetch_worker(self):
+        if not self.active:
+            sleep(0.01)
+        while self.active:
+            with self.storage_connections.item() as storage:
+                docs = storage.query_new_random(settings.prefetch['single_limit'])
+            if len(docs) == 0:
+                sleep(10.)
+                continue
+            else:
+                # Note: putting a *list* as a single item into queue
+                self.prefetch_queue.put(docs)
+        # and respawn again
+        self.prefetch_thread = spawn(self.prefetch_worker)
+
+    def postreport_worker(self):
+        if not self.active:
+            sleep(0.01)
+        while self.active: # outer forever loop
+            docs = []
+            while len(docs) < settings.postreport['flush_size']: # inner accumulator loop
                 try:
-                    old_doc = given_items[item['url']]
-                    old_doc.update(item)
-                    item = old_doc
+                    item = self.postreport_queue.get(timeout=settings.postreport['flush_delay'])
+                except eventlet.queue.Empty:
+                    break
+
+                if item['visited'] is None:
+                    # It's a link, found on some reported page.
+                    # Just add it to bulk insert, don't try to update any document here.
+                    docs.append(item)
+                    continue
+
+                try:
+                    old_doc = self.given_items[item['url']]
                 except KeyError:
-                    pass
+                    log.warning(u"Item is not found in cache, doing lookup for %s.", item['url'])
+                    with self.storage_connections.item() as storage:
+                        old_doc = storage.query_all_by_url_one(item['url']) or {}
+
+                item = dict(old_doc, **item)
                 docs.append(item)
-            except eventlet.queue.Empty:
-                break
-        if not docs:
-            continue
-        with storage_connections.item():
-            storage.update_meta(docs)
 
-def postreport_update_worker():
-    queue = postreport_state['update-queue'] # shortcut
-    while True: # outer forever loop
-        docs = []
-        while len(docs) < POSTREPORT_FLUSH_SIZE: # inner accumulator loop
-            try:
-                item = queue.get(timeout=POSTREPORT_FLUSH_DELAY)
-                docs.append(item)
-            except eventlet.queue.Empty:
-                break
-        if not docs:
-            continue
-        with storage_connections.item():
-            storage.update_meta(docs)
-postreport_state['update-worker'] = eventlet.spawn(postreport_update_worker)
+            if not docs:
+                continue
 
-@log_exceptions
-def crawl_queue(request):
-    limit = int(request.POST['limit'])
-    if limit > MAX_LIMIT:
-        limit = MAX_LIMIT
+            with self.storage_connections.item() as storage:
+                for doc in docs[:]:
+                    content = doc.pop('content', None)
 
-    time_now = datetime.datetime.now()
+                    if content is None:
+                        continue
+                    content_type = doc.get('headers', {}).get('content-type', "application/octet-stream")
 
-    with prefetch_worker_pool.item():
-        pass
-    doc_list = get_from_prefetch_queue(limit)
-    for doc in doc_list:
-        given_items.set(doc['url'], doc, 300)
+                    if doc.get('_id') is None:
+                        # this is a report on yet unknown URL
+                        storage.save(doc, raise_conflict=True, force_update=True, batch=None)
+                        docs.remove(doc)
 
-    def is_old(doc):
-        visited_str = doc['visited']
-        if not visited_str:
-            return True
-        visited = dateutil.parser.parse(visited_str)
-        diff = time_now - visited
-        return diff > MIN_VISIT_TIMEDELTA
+                    storage.save_content(doc, content, content_type)
 
-    doc_list = filter(is_old, doc_list)
+                storage.update(docs, raise_conflict=True, all_or_nothing=True, ensure_commit=True)
+        # and respawn again
+        self.prefetch_thread = spawn(self.prefetch_worker)
 
-    def make_queue_item(doc):
-        filter_fields = ('url', 'headers', 'visited',)
-        return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
+    @log_exceptions
+    def crawl_queue(self, request):
+        limit = max(int(request.POST['limit']), settings.api['max_queue_limit'])
 
-    queue = map(make_queue_item, doc_list)
-    return queue
+        time_now = datetime.datetime.now()
 
-@log_exceptions
-def report_result(request):
-    report = cjson.decode(request.body)
+        doc_list = self.get_from_prefetch_queue(limit)
+        for doc in doc_list:
+            self.given_items.set(doc['url'], doc, 300)
 
-    with postreport_worker_pool.item():
-        pass
+        def is_old(doc):
+            visited_str = doc['visited']
+            if not visited_str:
+                return True
+            visited = dateutil.parser.parse(visited_str)
+            diff = time_now - visited
+            return diff > datetime.timedelta(minutes=settings.api['min_revisit_minutes'])
 
-    links = report.pop('links', [])
-    # FIXME: magic number
-    if len(links) > 1000:
-        log.info("Too many links: %d at %s", len(links), report['url'])
+        doc_list = filter(is_old, doc_list)
 
-    # save reports
-    if report['url']:
-        content = report.pop('content', None)
-        if content is not None:
-            storage.save_content(settings.storage_root, report['url'], content)
-        doc = storage.query_meta_by_url_one(report['url'])
-        if doc is not None:
+        def make_queue_item(doc):
+            filter_fields = ('url', 'headers', 'visited',)
+            return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
+
+        queue = map(make_queue_item, doc_list)
+        return queue
+
+    @log_exceptions
+    def report_result(self, request):
+        report = cjson.decode(request.body)
+
+        links = report.pop('links', [])
+        # FIXME: magic number
+        if len(links) > 1000:
+            log.info("Too many links: %d at %s", len(links), report['url'])
+
+        # save reports
+        try:
+            doc = self.given_items[report['url']]
+        except KeyError:
+            self.postreport_queue.put(report)
+        else:
             doc.update(report)
             doc['links_count'] = len(links)
-            postreport_queue.put(doc)
-        else:
-            print"-=============- UNEXPECTED not found doc for URL", report['url']
-            # new link
-            postreport_queue.put(doc)
+            self.postreport_queue.put(doc)
 
-    # put links into queue
-    # 1. remove duplicates
-    links = list(set(links))
-    # 2. check for existing links
-    def url_filter(url):
-        url_lower = url.lower()
-        return url_lower.startswith("http") and \
-            (url.endswith("/") or url_lower.endswith("html") or url_lower.endswith("php"))
+        # put links into queue
+        # 1. remove duplicates
+        links = list(set(links))
+        # 2. check for existing links
+        def url_filter(url):
+            url_lower = url.lower()
+            return url_lower.startswith("http") and \
+                (url.endswith("/") or url_lower.endswith("html") or url_lower.endswith("php"))
 
-    links = filter(url_filter, links)
-    for url in links:
-        new_doc = {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
-        postreport_queue.put(new_doc)
+        links = filter(url_filter, links)
+        for url in links:
+            new_doc = {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
+            self.postreport_queue.put(new_doc)
 
-    return None
+        return None

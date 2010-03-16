@@ -1,8 +1,24 @@
 log:
     level: 0
 
-couchdb_url: http://localhost:5984/
-db_name: heroshi
+storage:
+    couchdb_url: http://localhost:5984/
+    db_name: heroshi
+    max_connections: 2
+
 authorized_keys:
     - temoto-devel:slawiddawdd2y1d71txi87d1tgiu1xui1yo8d
-storage_root: ~/.heroshi/page
+
+api:
+    max_queue_limit: 1000
+    min_revisit_minutes: 720
+
+prefetch:
+    single_limit: 100
+    queue_size: 10
+    get_timeout: 0.2
+postreport:
+    queue_size: 10000
+    flush_size: 1000
+    flush_delay: 10
+

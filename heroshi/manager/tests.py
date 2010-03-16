@@ -8,33 +8,44 @@ import webob
 from heroshi import storage # pylint: disable-msg=W0611
 from heroshi import TIME_FORMAT
 from heroshi.conf import load_from_dict as conf_from_dict, settings
-from heroshi.manager import manager
+from heroshi.manager import Manager
 
 
 class ManagerTestCase(unittest.TestCase):
     """Heroshi URL server tests."""
 
     def setUp(self):
-        settings.storage_root = "/tmp/heroshi-manager-test"
+        settings.prefetch = {'queue_size': 10,
+                             'get_timeout': 0.01,
+                             'single_limit': 5,
+                            }
+        settings.postreport = {'queue_size': 10,
+                               'flush_size': 1,
+                               'flush_delay': 0.01,
+                              }
+        settings.storage = {'max_connections': 1}
+        settings.api = {'max_queue_limit': 100}
+        self.manager = Manager()
+        # StorageConnection mock
+        smock.mock('storage.StorageConnection.__init__', returns=None)
+        #self.manager.storage_connections.create = storage.StorageConnection
 
     def tearDown(self):
+        self.manager.close()
         smock.cleanup()
         conf_from_dict({})
-        with manager.prefetch_worker_pool.item() as pre_w:
-            pre_w.kill()
-        with manager.postreport_worker_pool.item() as post_w:
-            post_w.kill()
 
     def test_get_001(self):
-        """Must call `storage.query_meta_new_random`."""
+        """Must call `storage.meta.query_new_random`."""
 
         req = webob.Request.blank('/')
         req.method = 'POST'
         req.body = "limit=10"
 
-        smock.mock('storage.query_meta_new_random', returns=[])
-        manager.crawl_queue(req)
-        self.assertTrue(smock.is_called('storage.query_meta_new_random', manager.PREFETCH_SINGLE_LIMIT))
+        smock.mock('storage.StorageConnection.query_new_random', returns=[])
+        self.manager.active = True
+        self.manager.crawl_queue(req)
+        self.assertTrue(smock.is_called('storage.StorageConnection.query_new_random'))
 
     def test_get_002(self):
         """Must return list of items fetched from storage."""
@@ -47,9 +58,10 @@ class ManagerTestCase(unittest.TestCase):
                  {'url': "http://url2/", 'visited': None},
                  {'url': "http://url3/", 'visited': None}]
         items_copy = items[:]
-        smock.mock('storage.query_meta_new_random',
+        smock.mock('storage.StorageConnection.query_new_random',
                    returns_func=lambda *a, **kw: [items_copy.pop()] if items_copy else [])
-        result = manager.crawl_queue(req)
+        self.manager.active = True
+        result = self.manager.crawl_queue(req)
         self.assertEqual(sorted(items), sorted(result))
 
     def test_get_003(self):
@@ -63,9 +75,9 @@ class ManagerTestCase(unittest.TestCase):
                  {'url': "http://url2/", 'visited': None},
                  {'url': "http://url3/", 'visited': None}]
         items_copy = items[:]
-        smock.mock('storage.query_meta_new_random',
+        smock.mock('storage.StorageConnection.query_new_random',
                    returns_func=lambda *a, **kw: [items_copy.pop()] if items_copy else [])
-        result = manager.crawl_queue(req)
+        result = self.manager.crawl_queue(req)
         self.assertTrue(len(result) <= 2)
 
     def test_put_001(self):
@@ -79,10 +91,10 @@ class ManagerTestCase(unittest.TestCase):
                }
         req.body = cjson.encode(item)
 
-        smock.mock('storage.save_content', returns=None)
-        smock.mock('storage.query_meta_by_url_one', returns={'url': url, 'visited': None})
-        smock.mock('storage.save_meta', returns=None)
-        smock.mock('storage.update_meta', returns=None)
-        manager.report_result(req)
+        smock.mock('storage.StorageConnection.save_content', returns=None)
+        smock.mock('storage.StorageConnection.query_all_by_url_one', returns={'url': url, 'visited': None})
+        smock.mock('storage.StorageConnection.save', returns=None)
+        smock.mock('storage.StorageConnection.update', returns=None)
+        self.manager.report_result(req)
         # assert nothing is raised
 

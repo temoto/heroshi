@@ -1,4 +1,5 @@
 import cjson
+import eventlet, eventlet.pools, eventlet.wsgi
 import webob
 import webob.exc
 from base64 import b64encode
@@ -7,12 +8,13 @@ import hashlib
 from heroshi.conf import settings
 from heroshi.misc import gzip_string, get_logger
 from heroshi.wsgi import method_dispatcher
-from .manager import crawl_queue, report_result
-
 log = get_logger("manager.server")
+from .manager import Manager
 
 
 AUTH_HEADER = "X-Heroshi-Auth"
+manager_pool = eventlet.pools.Pool(max_size=1)
+manager_pool.create = Manager
 
 
 class Response(webob.Response):
@@ -30,22 +32,29 @@ def check_auth(request):
 
 
 urls = {
-    '/crawl-queue': method_dispatcher(post=crawl_queue),
-    '/report':      method_dispatcher(put=report_result),
+    '/crawl-queue': dict(POST='crawl_queue'),
+    '/report':      dict(PUT='report_result'),
 }
 
 MIN_COMPRESS_LENGTH = 400
 
 def server(request):
-    handler = urls.get(request.path)
-    if not handler:
+    handler_map = urls.get(request.path)
+    if not handler_map:
         # default behaviour is 404 to all unknown URLs
         raise webob.exc.HTTPNotFound()
+
     auth_error = check_auth(request)
     if auth_error:
         log.info("auth: " + auth_error)
         raise webob.exc.HTTPUnauthorized(auth_error)
-    result = handler(request)
+
+    with manager_pool.item() as manager:
+        manager.active = True
+        handler = method_dispatcher(**dict( (method, getattr(manager, name))
+                                            for method,name in handler_map.iteritems() ))
+        result = handler(request)
+
     response = Response(cjson.encode(result), content_type='application/json')
     if not response.etag and (200 <= response.status_int < 300):
         # generate Etag from URL and response.body
