@@ -1,8 +1,11 @@
-# coding: utf-8
+"""Leaky map (dict with timeouts) implementation module. See `Cache` class for more info."""
+
 from eventlet import spawn_after
 
 
 class Cache(dict):
+    """TODO"""
+
     def __init__(self, *args, **kwargs):
         super(Cache, self).__init__(*args, **kwargs)
         self._timers = {}

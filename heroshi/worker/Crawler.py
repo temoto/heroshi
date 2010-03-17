@@ -1,4 +1,4 @@
-"""Crawler worker.
+"""Heroshi worker implementation.
 
 Gets URLs to crawl from queue server, crawls them, store and send crawl info back to queue server."""
 

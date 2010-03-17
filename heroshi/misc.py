@@ -1,3 +1,5 @@
+"""Random utility functions and Heroshi logging subsystem."""
+
 import os, logging
 from logging.handlers import SysLogHandler
 from logging import StreamHandler

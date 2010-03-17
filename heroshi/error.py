@@ -1,4 +1,4 @@
-"""Common exceptions."""
+"""Heroshi exceptions."""
 
 
 class Error(Exception):

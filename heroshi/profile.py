@@ -1,3 +1,5 @@
+"""Custom profiler implementation."""
+
 import time
 
 from heroshi.misc import get_logger

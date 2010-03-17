@@ -1,3 +1,5 @@
+"""HTTP link (URL) helper implementation module. See `Link` class for more info."""
+
 import re, hashlib
 
 
@@ -9,6 +11,8 @@ HASHER = hashlib.sha1
 
 
 class Link(object):
+    """TODO"""
+
     protocol = property(lambda self: self.is_secure and 'https' or 'http')
     full = property(lambda self: self.url if self.is_full else '%s://%s%s' % (self.protocol, self.domain, self.url))
     relative = property(lambda self: self.url if not self.is_full else 1/0) # TODO: implement full url shortener

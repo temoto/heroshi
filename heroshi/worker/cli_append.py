@@ -1,3 +1,5 @@
+"""Heroshi worker entry-point. Run this to send URIs to URL server for later crawling."""
+
 import logging
 from optparse import OptionParser
 

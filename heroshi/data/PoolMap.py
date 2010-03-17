@@ -1,4 +1,5 @@
-# coding: utf-8
+"""Map of pools data structure implementation module. See `PoolMap` class for more info."""
+
 from contextlib import contextmanager
 from eventlet.pools import Pool
 
@@ -6,6 +7,8 @@ from .Cache import Cache
 
 
 class PoolMap(object):
+    """TODO"""
+
     def __init__(self, func, timeout=None, pool_max_size=1):
         self.func = func
         self.timeout = timeout

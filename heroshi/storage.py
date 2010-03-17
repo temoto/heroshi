@@ -1,4 +1,4 @@
-# coding: utf-8
+"""Heroshi URL metadata and content storage abstraction layer."""
 
 __all__ = ['StorageConnection']
 

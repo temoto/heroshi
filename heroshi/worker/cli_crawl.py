@@ -1,3 +1,5 @@
+"""Heroshi worker entry-point. Run this to start crawling."""
+
 import logging
 from optparse import OptionParser
 

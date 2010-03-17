@@ -1,3 +1,5 @@
+"""Heroshi URL server WSGI application."""
+
 from base64 import b64encode
 import cjson
 import eventlet, eventlet.pools, eventlet.wsgi
@@ -24,6 +26,10 @@ class Response(webob.Response):
 
 
 def check_auth(request):
+    """Authorization check. Request -> None (granted) | error-string (denied).
+
+    Checks if header `AUTH_HEADER` value matches any key in configuration."""
+
     auth_key = request.headers.get(AUTH_HEADER, None)
     if auth_key is None:
         return "Authentication header %s not found." % AUTH_HEADER

@@ -1,3 +1,5 @@
+"""Heroshi DNS resolving subsystem."""
+
 from eventlet import tpool
 import random
 import socket

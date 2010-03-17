@@ -1,4 +1,4 @@
-"""WSGI utils"""
+"""WSGI utils."""
 
 from webob.exc import HTTPMethodNotAllowed
 

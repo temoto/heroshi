@@ -1,3 +1,7 @@
+"""Heroshi client (worker) API implementation.
+
+Crawler uses these helpers to communicate with URL server."""
+
 import cjson
 from eventlet.pools import Pool
 import httplib2
