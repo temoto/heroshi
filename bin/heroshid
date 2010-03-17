@@ -4,4 +4,4 @@
 
 export HEROSHI_CONFIG_PATH
 
-exec spawn --processes 1 --threads 0 heroshi.manager.server.wsgi_app
+exec python -m heroshi.manager.cli_manager $*
