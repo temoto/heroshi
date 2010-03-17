@@ -10,7 +10,7 @@ import httplib, httplib2
 import random, socket, sys, time, urlparse
 import robotparser
 
-from heroshi.data import Link, Page, PoolMap
+from heroshi.data import Cache, Link, Page, PoolMap
 from heroshi.data.Page import PageParseError
 from heroshi.conf import settings
 from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
@@ -29,6 +29,7 @@ class Crawler(object):
 
         self.queue = Queue(self.max_queue_size)
         self.closed = False
+        self.dns_cache = Cache()
         self._handler_pool = GreenPool(self.max_connections)
         self._connections = PoolMap(lambda: httplib2.Http(timeout=settings.socket_timeout),
                                     pool_max_size=self.max_connections_per_host,
@@ -36,7 +37,6 @@ class Crawler(object):
         self._robots_cache = PoolMap(self.get_robots_checker,
                                      pool_max_size=1,
                                      timeout=600)
-        self.resolver = dns.CachingResolver()
 
         log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
@@ -150,7 +150,7 @@ class Crawler(object):
 
         parsed = urlparse.urlsplit(uri)
         try:
-            addr = self.resolver.gethostbyname(parsed.hostname)
+            addr = dns.gethostbyname(parsed.hostname, cache=self.dns_cache)
         except dns.DnsError, e:
             log.info(u"DNS error at %s", uri)
             result['result'] = u"DNS Error: " + unicode(e)
