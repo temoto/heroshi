@@ -20,6 +20,10 @@ class Cache(dict):
         self._timers.clear()
         super(Cache, self).clear()
 
+    def pop(self, key, *args):
+        self.stop_timer(key)
+        return super(Cache, self).pop(key, *args)
+
     def set(self, key, value, timeout=None):
         self[key] = value
 
@@ -33,7 +37,7 @@ class Cache(dict):
 
     def reset_timer(self, key, timeout):
         self.stop_timer(key)
-        self._timers[key] = spawn_after(timeout, self.__delitem__, key)
+        self._timers[key] = spawn_after(timeout, self.pop, key, None)
 
     def __unicode__(self):
         return u"<Cache of %d items>" % (len(self),)
