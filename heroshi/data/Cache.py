@@ -24,6 +24,11 @@ class Cache(dict):
         self.stop_timer(key)
         return super(Cache, self).pop(key, *args)
 
+    def popitem(self):
+        k, v = super(Cache, self).popitem()
+        self.stop_timer(k)
+        return k, v
+
     def set(self, key, value, timeout=None):
         self[key] = value
 
