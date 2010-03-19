@@ -17,6 +17,8 @@ prefetch:
     single_limit: 100
     queue_size: 10
     get_timeout: 0.2
+    cache_timeout: 1800
+
 postreport:
     queue_size: 10000
     flush_size: 1000

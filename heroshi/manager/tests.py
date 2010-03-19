@@ -18,6 +18,7 @@ class ManagerTestCase(unittest.TestCase):
         settings.prefetch = {'queue_size': 10,
                              'get_timeout': 0.01,
                              'single_limit': 5,
+                             'cache_timeout': 60,
                             }
         settings.postreport = {'queue_size': 10,
                                'flush_size': 1,

@@ -120,7 +120,7 @@ class Manager(object):
 
         doc_list = self.get_from_prefetch_queue(limit)
         for doc in doc_list:
-            self.given_items.set(doc['url'], doc, 300)
+            self.given_items.set(doc['url'], doc, settings.prefetch['cache_timeout'])
 
         def is_old(doc):
             visited_str = doc['visited']
