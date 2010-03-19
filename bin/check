@@ -3,7 +3,9 @@
 # defaults
 : ${PYTHON="python"}
 nose=1
+nose_flags=""
 pylint=1
+pylint_flags=" --rcfile=etc/pylintrc "
 
 
 # parse command-line args
@@ -25,13 +27,11 @@ done
 
 
 # set flags
-nose_flags=""
 if [ $cover ];            then nose_flags+=" --with-coverage --cover-html-dir=tmp-cover-html --cover-erase --cover-html --cover-package=heroshi --cover-package=tests "; fi
 if [ ! $capture ];        then nose_flags+=" --nocapture "; fi
 if [ ! $log_capture ];    then nose_flags+=" --nologcapture "; fi
 if [ $xunit_save ];       then nose_flags+=" --with-xunit --xunit-file=test-report.xml "; fi
 
-pylint_flags=" --rcfile=etc/pylintrc "
 if [ $lint_save ];        then pylint_flags+=" -f parseable -i y --files-output=y ";
                           else pylint_flags+=" -f colorized "; fi
 if [ $lint_pedant ];      then pylint_flags+=" --enable-msg-cat=C,R "; fi
@@ -39,7 +39,7 @@ export PYTHONPATH=.:smock:$PYTHONPATH
 
 
 # actually run checks
-if [ $nose ];             then HEROSHI_CONFIG_PATH=stub $PYTHON $(which nosetests) $nose_flags; fi
+if [ $nose ];             then HEROSHI_CONFIG_PATH=stub $PYTHON $(which nosetests) $nose_flags $*; fi
 if [ $pylint ];           then
     pylint_cmd="$PYTHON $(which pylint) $pylint_flags"
     find heroshi tests -name '*.py' | sort | xargs $pylint_cmd
