@@ -19,7 +19,11 @@ class StorageConnection(object):
         if doc.get('_attachments', {}).get("content", {}).get("length", -1) == len(content):
             log.debug(u"Skipping update with same length.")
             return
-        self._db.put_attachment(doc, content, name="content", content_type=content_type)
+        try:
+            self._db.put_attachment(doc, content, name="content", content_type=content_type)
+        except couchdb.ResourceConflict:
+            if raise_conflict:
+                raise
 
     def get_content(self, doc=None, url=None):
         raise NotImplementedError()
