@@ -183,7 +183,6 @@ class Manager(object):
             self.postreport_queue.put(report)
         else:
             doc.update(report)
-            doc['links_count'] = len(links)
             self.postreport_queue.put(doc)
 
         # put links into queue
