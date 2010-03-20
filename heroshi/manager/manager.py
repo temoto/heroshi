@@ -178,7 +178,7 @@ class Manager(object):
         if self.is_duplicate_report(report['url']):
             return
 
-        # save reports
+        # save report
         try:
             doc = self.given_items[report['url']]
         except KeyError:
