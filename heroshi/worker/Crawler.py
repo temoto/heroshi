@@ -10,8 +10,7 @@ import httplib, httplib2
 import random, socket, sys, time, urlparse
 import robotparser
 
-from heroshi.data import Cache, Link, Page, PoolMap
-from heroshi.data.Page import PageParseError
+from heroshi.data import Cache, PoolMap
 from heroshi.conf import settings
 from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 from heroshi import TIME_FORMAT
@@ -267,19 +266,6 @@ class Crawler(object):
             report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
             report.update(fetch_result)
 
-        if report['status_code'] == 200:
-            page = Page(Link(uri), report['content'])
-            try:
-                page.parse()
-            except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
-                raise
-            except PageParseError, e:
-                report['result'] = unicode(e)
-            except Exception, e:
-                log.exception(u"Get rid of this. _process @ %s", uri)
-                report['result'] = u"Parse Error: " + unicode(e)
-            else:
-                report['links'] = [ link.full for link in page.links ]
 
         timestamp = datetime.now().strftime(TIME_FORMAT)
         report['visited'] = timestamp
