@@ -230,6 +230,8 @@ class Crawler(object):
 
     def do_process(self, item):
         report = self._process(item)
+        timestamp = datetime.now().strftime(TIME_FORMAT)
+        report['visited'] = timestamp
         self.report_item(report)
 
     def _process(self, item):
@@ -266,7 +268,4 @@ class Crawler(object):
             report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
             report.update(fetch_result)
 
-
-        timestamp = datetime.now().strftime(TIME_FORMAT)
-        report['visited'] = timestamp
         return report
