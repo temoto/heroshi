@@ -176,7 +176,7 @@ class Manager(object):
         if self.is_duplicate_report(report['url']):
             return
 
-        # save report
+        # accept report into postreport_queue for later persistent saving
         try:
             doc = self.given_items[report['url']]
         except KeyError:
