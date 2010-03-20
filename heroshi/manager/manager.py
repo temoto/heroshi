@@ -8,8 +8,6 @@ import dateutil.parser
 import eventlet, eventlet.pools, eventlet.queue
 from eventlet import spawn, sleep, Queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
-from pprint import pformat
-import random
 
 from heroshi.data import Cache
 from heroshi.conf import settings

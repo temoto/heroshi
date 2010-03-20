@@ -30,7 +30,7 @@ def parse_params():
     return options, args
 
 def main():
-    options, args = parse_params()
+    options, _args = parse_params()
 
     # set up logging
     if options.quiet:

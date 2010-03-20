@@ -1,5 +1,4 @@
 import eventlet
-import smock
 import unittest
 
 from heroshi.data import Cache
