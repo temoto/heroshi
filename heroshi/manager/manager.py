@@ -164,14 +164,26 @@ class Manager(object):
                 return True
         return False
 
+    def force_append_links(self, links):
+        # 1. remove duplicates
+        links = set(links)
+
+        # 2. put links into queue
+        for url in links:
+            new_doc = {'_id': url, 'url': url, 'parent': None, 'visited': None}
+            self.postreport_queue.put(new_doc)
+
     @log_exceptions
     def report_result(self, request):
         report = cjson.decode(request.body)
 
-        links = report.pop('links', [])
-        # FIXME: magic number
-        if len(links) > 1000:
-            log.info("Too many links: %d at %s", len(links), report['url'])
+        # `report['links']` now used only to force insertion of new URLs into
+        #   Heroshi crawling queue via bin/heroshi-append script.
+        # So, if a more sophisticated way to append new URLs is to arise,
+        #   remove this code.
+        if report['url'] is None:
+            self.force_append_links(report['links'])
+            return
 
         if self.is_duplicate_report(report['url']):
             return
@@ -184,19 +196,5 @@ class Manager(object):
         else:
             doc.update(report)
             self.postreport_queue.put(doc)
-
-        # put links into queue
-        # 1. remove duplicates
-        links = list(set(links))
-        # 2. check for existing links
-        def url_filter(url):
-            url_lower = url.lower()
-            return url_lower.startswith("http") and \
-                (url.endswith("/") or url_lower.endswith("html") or url_lower.endswith("php"))
-
-        links = filter(url_filter, links)
-        for url in links:
-            new_doc = {'_id': url, 'url': url, 'parent': report['url'], 'visited': None}
-            self.postreport_queue.put(new_doc)
 
         return None
