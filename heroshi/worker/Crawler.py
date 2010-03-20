@@ -251,7 +251,7 @@ class Crawler(object):
         else:
             try:
                 robot_check_result = self.ask_robots(uri, scheme, authority)
-            except (FetchError, RobotsError), e:
+            except CrawlError, e:
                 report['result'] = unicode(e)
                 return report
             if robot_check_result == True:
