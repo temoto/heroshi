@@ -15,7 +15,7 @@ class StorageConnection(object):
         self._server = couchdb.Server(settings.storage['couchdb_url'])
         self._db = self._server[settings.storage['db_name']]
 
-    def save_content(self, doc, content, content_type):
+    def save_content(self, doc, content, content_type, raise_conflict=True):
         if doc.get('_attachments', {}).get("content", {}).get("length", -1) == len(content):
             log.debug(u"Skipping update with same length.")
             return
