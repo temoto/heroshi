@@ -19,7 +19,17 @@ class Error(Exception):
 
 
 class ConfigurationError(Error):
-    """Base class for errors with server config."""
+    """Base class for errors with config."""
+    pass
+
+
+class ConfigNotSpecified(ConfigurationError):
+    """Config location was not specified via environment key nor via `conf.path`."""
+    pass
+
+
+class ConfigNotFound(ConfigurationError):
+    """Config location was specified, but no files found."""
     pass
 
 

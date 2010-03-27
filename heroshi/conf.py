@@ -9,7 +9,7 @@ from __future__ import with_statement
 import os
 import yaml
 
-from heroshi.error import ConfigurationError, MissingOption
+from heroshi.error import ConfigNotSpecified, ConfigNotFound, MissingOption
 
 
 ENVIRON_KEY = "HEROSHI_CONFIG_PATH"
@@ -87,7 +87,8 @@ def init():
     First guess is value of environment key (value of `ENVIRON_KEY` constant).
     If that fails, seeks in list of locations in module attribute `path`.
 
-    If all fails, raises `ConfigurationError`."""
+    If all fails and source was not specified via environ or `path`, raises `ConfigNotSpecified`.
+    If source was specified at least somehow but all paths don't exist, raises `ConfigNotFound`."""
 
     def first_good(xs, p):
         passed = filter(p, xs)
@@ -110,10 +111,13 @@ def init():
     else:
         # still not loaded
         if path:
-            tries_msg = "Tried these: %s" % (", ".join(path),)
+            tries_msg = "Tried these: %s." % (", ".join( "'%s'" % (s,) for s in path ),)
+            raise ConfigNotFound(tries_msg)
         else:
-            tries_msg = "path is empty and %s environ variable is not set." % (ENVIRON_KEY,)
-        raise ConfigurationError("Config file not found. %s" % (tries_msg,))
+            tries_msg = "`conf.path` is empty and %s environ variable is not set." % (ENVIRON_KEY,)
+            raise ConfigNotSpecified(tries_msg)
+    # wrong branch guard
+    assert False, u"This must not be executed."
 
 
 # module attributes
