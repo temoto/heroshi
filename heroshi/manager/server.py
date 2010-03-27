@@ -7,9 +7,10 @@ import hashlib
 import webob
 import webob.exc
 
-from heroshi.conf import settings
-from heroshi.misc import gzip_string, get_logger
+from heroshi import get_logger
 log = get_logger("manager.server")
+from heroshi.conf import settings
+from heroshi.misc import gzip_string
 from heroshi.wsgi import method_dispatcher
 from .manager import Manager
 

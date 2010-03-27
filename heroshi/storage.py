@@ -5,9 +5,9 @@ __all__ = ['StorageConnection']
 import couchdbkit as couchdb
 import random
 
-from heroshi.conf import settings
-from heroshi.misc import get_logger
+from heroshi import get_logger
 log = get_logger("storage")
+from heroshi.conf import settings
 
 
 class StorageConnection(object):

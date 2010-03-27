@@ -8,10 +8,10 @@ import httplib2
 import socket
 from urllib import urlencode
 
+from heroshi import get_logger
+log = get_logger("api")
 from heroshi.conf import settings
 from heroshi.error import ApiError
-from heroshi.misc import get_logger
-log = get_logger("api")
 
 
 manager_connections = Pool(max_size=2)

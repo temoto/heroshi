@@ -2,7 +2,7 @@
 
 import time
 
-from heroshi.misc import get_logger
+from heroshi import get_logger
 log = get_logger("profile")
 
 

@@ -9,9 +9,9 @@ import eventlet, eventlet.pools, eventlet.queue
 from eventlet import spawn, sleep, Queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
 
+from heroshi import get_logger, log_exceptions
 from heroshi.data import Cache
 from heroshi.conf import settings
-from heroshi.misc import get_logger, log_exceptions
 log = get_logger("manager")
 from heroshi.profile import Profile
 from heroshi.storage import StorageConnection

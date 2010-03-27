@@ -4,7 +4,7 @@ import logging
 from optparse import OptionParser
 
 import heroshi
-from heroshi.misc import update_loggers_level
+from heroshi.log import update_loggers_level
 from heroshi.worker import Crawler
 
 

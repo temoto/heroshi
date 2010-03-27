@@ -4,8 +4,8 @@ from eventlet import tpool
 import random
 import socket
 
-from heroshi import error, misc
-log = misc.get_logger("dns")
+from heroshi import error, get_logger
+log = get_logger("dns")
 
 
 DEFAULT_TTL = 1200

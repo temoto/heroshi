@@ -4,9 +4,8 @@
 from BeautifulSoup import BeautifulSoup
 import HTMLParser
 
-from heroshi import error
+from heroshi import error, get_logger
 from heroshi.data import Link
-from heroshi.misc import get_logger
 log = get_logger("data.Page")
 
 

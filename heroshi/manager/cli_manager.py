@@ -6,7 +6,7 @@ from optparse import OptionParser
 
 import heroshi
 from heroshi.conf import settings
-from heroshi.misc import update_loggers_level
+from heroshi.log import update_loggers_level
 from .server import wsgi_app
 
 

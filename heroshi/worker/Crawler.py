@@ -10,12 +10,12 @@ import httplib, httplib2
 import random, socket, sys, time, urlparse
 import robotparser
 
-from heroshi.data import Cache, PoolMap
-from heroshi.conf import settings
-from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 from heroshi import TIME_FORMAT
-from heroshi import api, dns, error, misc
-log = misc.get_logger("worker.Crawler")
+from heroshi import api, dns, error, get_logger
+log = get_logger("worker.Crawler")
+from heroshi.conf import settings
+from heroshi.data import Cache, PoolMap
+from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 
 eventlet.monkey_patch(all=False, socket=True, select=True)
 
