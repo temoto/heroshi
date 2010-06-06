@@ -38,6 +38,10 @@ class Manager(object):
         self.prefetch_thread.kill()
         self.postreport_thread.kill()
 
+    def ping_storage(self):
+        with self.storage_connections.item() as storage:
+            pass
+
     def get_from_prefetch_queue(self, size):
         result = []
         while len(result) < size:

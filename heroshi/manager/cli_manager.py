@@ -43,6 +43,7 @@ def main():
     # eager initialization of manager instance and its storage connection
     with manager_pool.item() as manager:
         manager.active = True
+        manager.ping_storage()
 
     sock = eventlet.listen( ('0.0.0.0', 8080) )
     eventlet.wsgi.server(sock, wsgi_app, log=Blackhole())

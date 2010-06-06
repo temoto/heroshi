@@ -10,10 +10,24 @@ log = get_logger("storage")
 from heroshi.conf import settings
 
 
+class StorageError(Exception):
+    pass
+
+
 class StorageConnection(object):
     def __init__(self):
-        self._server = couchdb.Server(settings.storage['couchdb_url'])
-        self._db = self._server[settings.storage['db_name']]
+        couchdb_url = settings.storage['couchdb_url']
+        db_name = settings.storage['db_name']
+
+        self._server = couchdb.Server(couchdb_url)
+        try:
+            self._db = self._server[db_name]
+        except couchdb.RequestFailed, e:
+            raise StorageError(u"Error connecting to CouchDB at {url}. Check that it is running. Debug info: {error!s}".format(
+                error=e, url=couchdb_url))
+        except couchdb.ResourceNotFound:
+            raise StorageError(u"CouchDB database '{db_name}' does not exist. Please, create it manually at {url}_utils".format(
+                url=couchdb_url, db_name=db_name))
 
     def save_content(self, doc, content, content_type, raise_conflict=True):
         if doc.get('_attachments', {}).get("content", {}).get("length", -1) == len(content):
