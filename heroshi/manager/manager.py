@@ -10,8 +10,8 @@ eventlet.monkey_patch(all=False, socket=True, select=True)
 import json
 
 from heroshi import get_logger, log_exceptions
-from heroshi.data import Cache
 from heroshi.conf import settings
+from heroshi.data import Cache
 log = get_logger("manager")
 from heroshi.misc import reraise_errors
 from heroshi.profile import Profile
@@ -23,13 +23,17 @@ class Manager(object):
 
     def __init__(self):
         self.active = False
+
         self.prefetch_queue = Queue(settings.prefetch['queue_size'])
         self.prefetch_thread = spawn(self.prefetch_worker)
         self.prefetch_thread.link(reraise_errors, greenthread.getcurrent())
+
         self.given_items = Cache()
+
         self.postreport_queue = Queue(settings.postreport['queue_size'])
         self.postreport_thread = spawn(self.postreport_worker)
         self.postreport_thread.link(reraise_errors, greenthread.getcurrent())
+
         self.storage_connections = eventlet.pools.Pool(max_size=settings.storage['max_connections'])
         self.storage_connections.create = StorageConnection
 
@@ -147,6 +151,10 @@ class Manager(object):
             self.given_items.set(doc['url'], doc, settings.prefetch['cache_timeout'])
 
         def is_old(doc):
+            """Predicate tells if page was never visited or visited long enough ago.
+
+            Worker SHOULD NOT visit URI, if this function returns False.
+            """
             visited_str = doc['visited']
             if not visited_str:
                 return True
