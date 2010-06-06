@@ -74,12 +74,14 @@ class Crawler(object):
         self.closed = True
         if timeout is not None:
             with eventlet.Timeout(timeout, False):
-                self._queue_updater_thread.kill()
+                if hasattr(self, '_queue_updater_thread'):
+                    self._queue_updater_thread.kill()
                 self._handler_pool.waitall()
                 return True
             return False
         else:
-            self._queue_updater_thread.kill()
+            if hasattr(self, '_queue_updater_thread'):
+                self._queue_updater_thread.kill()
             self._handler_pool.waitall()
 
     def get_active_connections_count(self, key):
