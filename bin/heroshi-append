@@ -1,7 +1,0 @@
-#!/bin/bash
-
-: ${HEROSHI_CONFIG_PATH=etc/worker-devel.yaml}
-
-export HEROSHI_CONFIG_PATH
-
-exec python -m heroshi.worker.cli_append $*

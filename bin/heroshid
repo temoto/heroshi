@@ -1,7 +1,0 @@
-#!/bin/bash
-
-: ${HEROSHI_CONFIG_PATH=etc/manager-devel.yaml}
-
-export HEROSHI_CONFIG_PATH
-
-exec python -m heroshi.manager.cli_manager $*
