@@ -1,6 +1,8 @@
 """Random utility functions."""
 
+from eventlet import greenlet, greenthread
 import os
+import sys
 
 
 # From http://www.xhaus.com/alan/python/httpcomp.html#gzip
@@ -19,4 +21,12 @@ def gzip_string(s, level=6):
 
 def os_path_expand(p):
     return os.path.expandvars(os.path.expanduser(p))
+
+def reraise_errors(t, master_gt):
+    try:
+        return t.wait()
+    except greenlet.GreenletExit:
+        pass
+    except Exception:
+        greenthread.kill(master_gt, *sys.exc_info())
 

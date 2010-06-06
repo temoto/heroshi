@@ -5,7 +5,7 @@ __all__ = ['Manager']
 import datetime
 import dateutil.parser
 import eventlet, eventlet.pools, eventlet.queue
-from eventlet import spawn, sleep, Queue
+from eventlet import greenthread, spawn, sleep, Queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
 import json
 
@@ -13,6 +13,7 @@ from heroshi import get_logger, log_exceptions
 from heroshi.data import Cache
 from heroshi.conf import settings
 log = get_logger("manager")
+from heroshi.misc import reraise_errors
 from heroshi.profile import Profile
 from heroshi.storage import StorageConnection
 
@@ -24,9 +25,11 @@ class Manager(object):
         self.active = False
         self.prefetch_queue = Queue(settings.prefetch['queue_size'])
         self.prefetch_thread = spawn(self.prefetch_worker)
+        self.prefetch_thread.link(reraise_errors, greenthread.getcurrent())
         self.given_items = Cache()
         self.postreport_queue = Queue(settings.postreport['queue_size'])
         self.postreport_thread = spawn(self.postreport_worker)
+        self.postreport_thread.link(reraise_errors, greenthread.getcurrent())
         self.storage_connections = eventlet.pools.Pool(max_size=settings.storage['max_connections'])
         self.storage_connections.create = StorageConnection
 

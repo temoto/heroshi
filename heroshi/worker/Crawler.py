@@ -7,7 +7,7 @@ import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib, httplib2
-import random, socket, sys, time, urlparse
+import random, socket, time, urlparse
 import robotparser
 
 from heroshi import TIME_FORMAT
@@ -16,6 +16,7 @@ log = get_logger("worker.Crawler")
 from heroshi.conf import settings
 from heroshi.data import Cache, PoolMap
 from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
+from heroshi.misc import reraise_errors
 
 eventlet.monkey_patch(all=False, socket=True, select=True)
 
@@ -43,23 +44,8 @@ class Crawler(object):
     def crawl(self, forever=True):
         # TODO: do something special about signals?
 
-        crawler_thread = greenthread.getcurrent()
-        def _exc_link(gt):
-            try:
-                gt.wait()
-            except Exception: # pylint: disable-msg=W0703
-                crawler_thread.throw(*sys.exc_info())
-
-        def qputter():
-            while True:
-                if self.queue.qsize() < self.max_queue_size:
-                    self.do_queue_get()
-                    sleep()
-                else:
-                    sleep(settings.full_queue_pause)
-
         if forever:
-            spawn(qputter).link(_exc_link)
+            self.start_queue_updater()
 
         while not self.closed:
             # `get_nowait` will only work together with sleep(0) here
@@ -72,7 +58,8 @@ class Crawler(object):
                     self.graceful_stop()
                 sleep(0.01)
                 continue
-            self._handler_pool.spawn(self.do_process, item).link(_exc_link)
+            t = self._handler_pool.spawn(self.do_process, item)
+            t.link(reraise_errors, greenthread.getcurrent())
 
     def stop(self):
         self.closed = True
@@ -87,10 +74,12 @@ class Crawler(object):
         self.closed = True
         if timeout is not None:
             with eventlet.Timeout(timeout, False):
+                self._queue_updater_thread.kill()
                 self._handler_pool.waitall()
                 return True
             return False
         else:
+            self._queue_updater_thread.kill()
             self._handler_pool.waitall()
 
     def get_active_connections_count(self, key):
@@ -98,6 +87,18 @@ class Crawler(object):
         if pool is None:
             return 0
         return pool.max_size - pool.free()
+
+    def start_queue_updater(self):
+        self._queue_updater_thread = spawn(self.queue_updater)
+        self._queue_updater_thread.link(reraise_errors, greenthread.getcurrent())
+
+    def queue_updater(self):
+        while not self.closed:
+            if self.queue.qsize() < self.max_queue_size:
+                self.do_queue_get()
+                sleep()
+            else:
+                sleep(settings.full_queue_pause)
 
     def do_queue_get(self):
         log.debug(u"It's queue update time!")
