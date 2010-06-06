@@ -57,7 +57,6 @@ def server(request):
         raise webob.exc.HTTPUnauthorized(auth_error)
 
     with manager_pool.item() as manager:
-        manager.active = True
         handler = method_dispatcher(**dict( (method, getattr(manager, name))
                                             for method,name in handler_map.iteritems() ))
         result = handler(request)

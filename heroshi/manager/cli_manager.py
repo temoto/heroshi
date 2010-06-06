@@ -7,7 +7,7 @@ from optparse import OptionParser
 import heroshi
 from heroshi.conf import settings
 from heroshi.log import update_loggers_level
-from .server import wsgi_app
+from .server import manager_pool, wsgi_app
 
 
 class Blackhole(object):
@@ -39,6 +39,10 @@ def main():
         update_loggers_level(logging.DEBUG)
     else:
         update_loggers_level(settings.log['level'])
+
+    # eager initialization of manager instance and its storage connection
+    with manager_pool.item() as manager:
+        manager.active = True
 
     sock = eventlet.listen( ('0.0.0.0', 8080) )
     eventlet.wsgi.server(sock, wsgi_app, log=Blackhole())
