@@ -168,7 +168,7 @@ class Crawler(object):
             except socket.timeout:
                 log.info(u"Socket timeout at %s", uri)
                 result['result'] = u"Socket timeout"
-            except httplib.BadStatusLine, e:
+            except httplib.HTTPException, e:
                 log.info(u"HTTP Error at %s: %s", uri, unicode(e))
                 result['result'] = u"HTTP Error: " + unicode(e)
             except Exception, e:
