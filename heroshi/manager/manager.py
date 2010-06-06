@@ -2,12 +2,12 @@
 
 __all__ = ['Manager']
 
-import cjson
 import datetime
 import dateutil.parser
 import eventlet, eventlet.pools, eventlet.queue
 from eventlet import spawn, sleep, Queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
+import json
 
 from heroshi import get_logger, log_exceptions
 from heroshi.data import Cache
@@ -175,7 +175,7 @@ class Manager(object):
 
     @log_exceptions
     def report_result(self, request):
-        report = cjson.decode(request.body)
+        report = json.loads(request.body)
 
         # `report['links']` now used only to force insertion of new URLs into
         #   Heroshi crawling queue via bin/heroshi-append script.

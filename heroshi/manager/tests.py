@@ -1,5 +1,5 @@
-import cjson
 from datetime import datetime
+import json
 import smock
 import unittest
 import webob
@@ -90,7 +90,7 @@ class ManagerTestCase(unittest.TestCase):
         item = {'url': url, 'visited': datetime.now().strftime(TIME_FORMAT),
                 'status_code': 200, 'content': "test content",
                }
-        req.body = cjson.encode(item)
+        req.body = json.dumps(item)
 
         smock.mock('storage.StorageConnection.save_content', returns=None)
         smock.mock('storage.StorageConnection.query_all_by_url_one', returns={'url': url, 'visited': None})

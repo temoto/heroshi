@@ -2,9 +2,9 @@
 
 Crawler uses these helpers to communicate with URL server."""
 
-import cjson
 from eventlet.pools import Pool
 import httplib2
+import json
 import socket
 from urllib import urlencode
 
@@ -49,8 +49,8 @@ def get_crawl_queue(limit):
     response = request_manager('/crawl-queue', 'POST',
                                urlencode({'limit': limit}),
                                {'Content-Type': "application/x-www-form-urlencoded"})
-    queue = cjson.decode(response)
+    queue = json.loads(response)
     return queue
 
 def report_result(item):
-    request_manager('/report', 'PUT', cjson.encode(item))
+    request_manager('/report', 'PUT', json.dumps(item))

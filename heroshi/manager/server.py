@@ -1,9 +1,9 @@
 """Heroshi URL server WSGI application."""
 
 from base64 import b64encode
-import cjson
 import eventlet, eventlet.pools, eventlet.wsgi
 import hashlib
+import json
 import webob
 import webob.exc
 
@@ -62,7 +62,7 @@ def server(request):
                                             for method,name in handler_map.iteritems() ))
         result = handler(request)
 
-    response = Response(cjson.encode(result), content_type='application/json')
+    response = Response(json.dumps(result), content_type='application/json')
     if not response.etag and (200 <= response.status_int < 300):
         # generate Etag from URL and response.body
         sha256_tag = hashlib.sha256(request.path + response.body).digest()
