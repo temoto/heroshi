@@ -34,6 +34,7 @@ class WorkerTestCase(unittest.TestCase):
                 )
 
     def tearDown(self):
+        self.client.graceful_stop(DEFAULT_TIMEOUT)
         smock.cleanup()
         conf_from_dict({})
 
@@ -136,6 +137,7 @@ class RobotsTestCase(unittest.TestCase):
         smock.mock('httplib2.Http.request', returns_func=mock_httplib2_request)
 
     def tearDown(self):
+        self.client.graceful_stop(DEFAULT_TIMEOUT)
         smock.cleanup()
         conf_from_dict({})
 
