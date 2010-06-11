@@ -4,7 +4,12 @@ Crawler uses these helpers to communicate with URL server."""
 
 from eventlet.pools import Pool
 import httplib2
-import json
+
+try:
+    import yajl as json
+except ImportError:
+    import json
+
 import socket
 from urllib import urlencode
 

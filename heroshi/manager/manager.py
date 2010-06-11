@@ -7,7 +7,10 @@ import dateutil.parser
 import eventlet, eventlet.pools, eventlet.queue
 from eventlet import greenthread, spawn, sleep, Queue
 eventlet.monkey_patch(all=False, socket=True, select=True)
-import json
+try:
+    import yajl as json
+except ImportError:
+    import json
 
 from heroshi import get_logger, log_exceptions
 from heroshi.conf import settings
