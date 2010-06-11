@@ -1,5 +1,8 @@
 from datetime import datetime
-import json
+try:
+    import yajl as json
+except ImportError:
+    import json
 import smock
 import unittest
 import webob

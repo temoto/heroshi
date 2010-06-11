@@ -3,7 +3,10 @@
 from base64 import b64encode
 import eventlet, eventlet.pools, eventlet.wsgi
 import hashlib
-import json
+try:
+    import yajl as json
+except ImportError:
+    import json
 import webob
 import webob.exc
 
