@@ -18,7 +18,7 @@ from heroshi.data import Cache
 log = get_logger("manager")
 from heroshi.misc import reraise_errors
 from heroshi.profile import Profile
-from heroshi.storage import StorageConnection
+from heroshi.storage.couchdb import StorageConnection
 
 
 class Manager(object):

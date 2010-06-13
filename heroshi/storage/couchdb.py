@@ -1,4 +1,4 @@
-"""Heroshi URL metadata and content storage abstraction layer."""
+"""Heroshi URL metadata and content storage abstraction layer: CouchDB."""
 
 __all__ = ['StorageConnection']
 
@@ -6,12 +6,9 @@ import couchdbkit as couchdb
 import random
 
 from heroshi import get_logger
-log = get_logger("storage")
+log = get_logger("storage.couchdb")
 from heroshi.conf import settings
-
-
-class StorageError(Exception):
-    pass
+from heroshi.error import StorageError
 
 
 class StorageConnection(object):
