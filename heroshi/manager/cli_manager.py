@@ -21,7 +21,7 @@ def parse_params():
     usage_info = u"Usage: %prog [OPTION...] [URL...]"
     version_info = u"Heroshi/%s" % heroshi.__version__
     opt_parser = OptionParser(usage_info, version=version_info)
-    opt_parser.set_defaults(verbose=False, quiet=False, queue_size=500, connections=500)
+    opt_parser.set_defaults(verbose=False, quiet=False)
     opt_parser.add_option('-q', '--quiet', action="store_true",
                           help=u"Be quiet, don't generate any output")
     opt_parser.add_option('-v', '--verbose', action="store_true",
