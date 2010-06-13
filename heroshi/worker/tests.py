@@ -90,6 +90,22 @@ class WorkerTestCase(unittest.TestCase):
         self.assertTrue(flags['max_count'] <= self.client.max_connections_per_host,
                         u"Started too many connections.")
 
+    def test_crawl_004(self):
+        """Must handle invalid URL with empty port number."""
+
+        def mock_get_crawl_queue(_limit):
+            return [{'url': "http://localhost:/test_crawl_004_link", 'visited': None, 'links': []}]
+
+        def mock_report_result(report):
+            self.assertTrue('Error' in report['result'])
+            self.assertEqual(report['url'], "http://localhost:/test_crawl_004_link")
+
+        smock.mock('api.get_crawl_queue', returns_func=mock_get_crawl_queue)
+        smock.mock('api.report_result', returns_func=mock_report_result)
+        #smock.mock('httplib2.Http.request', returns=(make_http_response(404), ""))
+        with eventlet.Timeout(DEFAULT_TIMEOUT, False):
+            self.client.crawl()
+
 
 class RobotsTestCase(unittest.TestCase):
     """Heroshi worker robots.txt handling tests."""
