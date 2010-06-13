@@ -7,11 +7,11 @@ import smock
 import unittest
 import webob
 
-# pylint-silence unused imports required for mocking
-from heroshi import storage # pylint: disable-msg=W0611
 from heroshi import TIME_FORMAT
 from heroshi.conf import load_from_dict as conf_from_dict, settings
 from heroshi.manager import Manager
+# pylint-silence unused imports required for mocking
+from heroshi.storage.couchdb import StorageConnection # pylint: disable-msg=W0611
 
 
 class ManagerTestCase(unittest.TestCase):
@@ -31,7 +31,7 @@ class ManagerTestCase(unittest.TestCase):
         settings.api = {'max_queue_limit': 100}
         self.manager = Manager()
         # StorageConnection mock
-        smock.mock('storage.StorageConnection.__init__', returns=None)
+        smock.mock('StorageConnection.__init__', returns=None)
         #self.manager.storage_connections.create = storage.StorageConnection
 
     def tearDown(self):
@@ -46,10 +46,10 @@ class ManagerTestCase(unittest.TestCase):
         req.method = 'POST'
         req.body = "limit=10"
 
-        smock.mock('storage.StorageConnection.query_new_random', returns=[])
+        smock.mock('StorageConnection.query_new_random', returns=[])
         self.manager.active = True
         self.manager.crawl_queue(req)
-        self.assertTrue(smock.is_called('storage.StorageConnection.query_new_random'))
+        self.assertTrue(smock.is_called('StorageConnection.query_new_random'))
 
     def test_get_002(self):
         """Must return list of items fetched from storage."""
@@ -62,7 +62,7 @@ class ManagerTestCase(unittest.TestCase):
                  {'url': "http://url2/", 'visited': None},
                  {'url': "http://url3/", 'visited': None}]
         items_copy = items[:]
-        smock.mock('storage.StorageConnection.query_new_random',
+        smock.mock('StorageConnection.query_new_random',
                    returns_func=lambda *a, **kw: [items_copy.pop()] if items_copy else [])
         self.manager.active = True
         result = self.manager.crawl_queue(req)
@@ -79,7 +79,7 @@ class ManagerTestCase(unittest.TestCase):
                  {'url': "http://url2/", 'visited': None},
                  {'url': "http://url3/", 'visited': None}]
         items_copy = items[:]
-        smock.mock('storage.StorageConnection.query_new_random',
+        smock.mock('StorageConnection.query_new_random',
                    returns_func=lambda *a, **kw: [items_copy.pop()] if items_copy else [])
         result = self.manager.crawl_queue(req)
         self.assertTrue(len(result) <= 2)
@@ -95,10 +95,10 @@ class ManagerTestCase(unittest.TestCase):
                }
         req.body = json.dumps(item)
 
-        smock.mock('storage.StorageConnection.save_content', returns=None)
-        smock.mock('storage.StorageConnection.query_all_by_url_one', returns={'url': url, 'visited': None})
-        smock.mock('storage.StorageConnection.save', returns=None)
-        smock.mock('storage.StorageConnection.update', returns=None)
+        smock.mock('StorageConnection.save_content', returns=None)
+        smock.mock('StorageConnection.query_all_by_url_one', returns={'url': url, 'visited': None})
+        smock.mock('StorageConnection.save', returns=None)
+        smock.mock('StorageConnection.update', returns=None)
         self.manager.report_result(req)
         # assert nothing is raised
 
