@@ -6,19 +6,19 @@ import datetime
 import dateutil.parser
 import eventlet, eventlet.pools, eventlet.queue
 from eventlet import greenthread, spawn, sleep, Queue
-eventlet.monkey_patch(all=False, socket=True, select=True)
+eventlet.monkey_patch(all=False, socket=True, select=True, psycopg=True)
 try:
     import yajl as json
 except ImportError:
     import json
 
-from heroshi import get_logger, log_exceptions
+from heroshi import TIME_FORMAT, get_logger, log_exceptions
 from heroshi.conf import settings
 from heroshi.data import Cache
 log = get_logger("manager")
 from heroshi.misc import reraise_errors
 from heroshi.profile import Profile
-from heroshi.storage.couchdb import StorageConnection
+from heroshi.storage.postgres import StorageConnection
 
 
 class Manager(object):
@@ -103,14 +103,6 @@ class Manager(object):
                 docs.append(item)
                 continue
 
-            try:
-                old_doc = self.given_items[item['url']]
-            except KeyError:
-                log.warning(u"Item is not found in cache, doing lookup for %s.", item['url'])
-                with self.storage_connections.item() as storage:
-                    old_doc = storage.query_all_by_url_one(item['url']) or {}
-
-            item = dict(old_doc, **item)
             docs.append(item)
 
         if not docs:
@@ -126,12 +118,12 @@ class Manager(object):
 
                 if doc.get('_id') is None:
                     # this is a report on yet unknown URL
-                    storage.save(doc, raise_conflict=True, force_update=True, batch=None)
+                    storage.save(doc)
                     docs.remove(doc)
 
-                storage.save_content(doc, content, content_type, raise_conflict=False)
+                storage.save_content(doc, content, content_type)
 
-            storage.update(docs, raise_conflict=True, all_or_nothing=True, ensure_commit=True)
+            storage.update(docs)
 
     def postreport_worker(self):
         if not self.active:
@@ -151,6 +143,8 @@ class Manager(object):
 
         doc_list = self.get_from_prefetch_queue(limit)
         for doc in doc_list:
+            if isinstance(doc['visited'], basestring):
+                doc['visited'] = datetime.datetime.strptime(doc['visited'], TIME_FORMAT)
             self.given_items.set(doc['url'], doc, settings.prefetch['cache_timeout'])
 
         def is_old(doc):
@@ -158,16 +152,16 @@ class Manager(object):
 
             Worker SHOULD NOT visit URI, if this function returns False.
             """
-            visited_str = doc['visited']
-            if not visited_str:
+            if doc['visited'] is None:
                 return True
-            visited = dateutil.parser.parse(visited_str)
-            diff = time_now - visited
+            diff = time_now - doc['visited']
             return diff > datetime.timedelta(minutes=settings.api['min_revisit_minutes'])
 
         doc_list = filter(is_old, doc_list)
 
         def make_queue_item(doc):
+            if isinstance(doc['visited'], datetime.datetime):
+                doc['visited'] = doc['visited'].strftime(TIME_FORMAT)
             filter_fields = ('url', 'headers', 'visited',)
             return dict( (k,v) for (k,v) in doc.iteritems() if k in filter_fields )
 

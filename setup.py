@@ -11,6 +11,7 @@ install_requires = [
     'couchdbkit',
     'eventlet == 0.9.9',
     'httplib2',
+    'psycopg2 >= 2.2.1',
     'webob',
 ]
 

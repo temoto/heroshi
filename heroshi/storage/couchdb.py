@@ -1,5 +1,6 @@
 """Heroshi URL metadata and content storage abstraction layer: CouchDB."""
 
+raise Exception("This backend is not maintained currently.")
 __all__ = ['StorageConnection']
 
 import couchdbkit as couchdb
