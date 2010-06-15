@@ -109,21 +109,16 @@ class Manager(object):
             return
 
         with self.storage_connections.item() as storage:
-            for doc in docs[:]:
+            for doc in docs:
                 content = doc.pop('content', None)
+
+                storage.save(doc)
 
                 if content is None:
                     continue
                 content_type = doc.get('headers', {}).get('content-type', "application/octet-stream")
 
-                if doc.get('_id') is None:
-                    # this is a report on yet unknown URL
-                    storage.save(doc)
-                    docs.remove(doc)
-
                 storage.save_content(doc, content, content_type)
-
-            storage.update(docs)
 
     def postreport_worker(self):
         if not self.active:
@@ -182,7 +177,7 @@ class Manager(object):
 
         # 2. put links into queue
         for url in links:
-            new_doc = {'_id': url, 'url': url, 'parent': None, 'visited': None}
+            new_doc = {'url': url, 'parent': None, 'visited': None}
             self.postreport_queue.put(new_doc)
 
     @log_exceptions

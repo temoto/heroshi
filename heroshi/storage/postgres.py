@@ -33,8 +33,9 @@ def item_to_row(item):
     dup = dict(item)
     row = {}
     row['url'] = dup.pop('url')
-    row['visited'] = datetime.strptime(dup.pop('visited'), TIME_FORMAT)
-    row['result'] = dup.pop('result')
+    visited = dup.pop('visited')
+    row['visited'] = datetime.strptime(visited, TIME_FORMAT) if visited else None
+    row['result'] = dup.pop('result', None)
     row['fetch_time'] = dup.pop('fetch_time', None)
     row['status_code'] = dup.pop('status_code', None)
 
