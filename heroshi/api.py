@@ -58,4 +58,15 @@ def get_crawl_queue(limit):
     return queue
 
 def report_result(item):
-    request_manager('/report', 'PUT', json.dumps(item))
+    try:
+        item_json = json.dumps(item)
+    except UnicodeDecodeError:
+        item['result'] = "FIXME: unicode decode error"
+        item.pop('content')
+        try:
+            item_json = json.dumps(item)
+        except UnicodeDecodeError:
+            log.error("Fatal unicode decode error @ %s", item['url'])
+            return
+    request_manager('/report', 'PUT', item_json)
+
