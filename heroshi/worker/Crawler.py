@@ -7,7 +7,7 @@ import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib, httplib2
-import random, socket, time, urlparse
+import random, socket, time, urllib, urlparse
 import robotparser
 
 from heroshi import TIME_FORMAT
@@ -257,6 +257,13 @@ class Crawler(object):
         if scheme is None or authority is None:
             report['result'] = u"Invalid URI"
         else:
+            try:
+                # this line is copied from robotsparser.py:can_fetch
+                urllib.quote(urlparse.urlparse(urllib.unquote(url))[2])
+            except KeyError:
+                report['result'] = u"Malformed URL quoting."
+                return report
+
             try:
                 robot_check_result = self.ask_robots(uri, scheme, authority)
             except CrawlError, e:
