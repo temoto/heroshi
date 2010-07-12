@@ -165,6 +165,11 @@ class Crawler(object):
             conn.follow_redirects = False
             try:
                 response, content = conn.request(request_uri, headers=request_headers)
+            except AttributeError, e:
+                if unicode(e) == u"'NoneType' object has no attribute 'makefile'":
+                    result['result'] = u"FIXME: httplib2 no attribute 'makefile' problem."
+                else:
+                    raise
             except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
                 raise
             except socket.timeout:
