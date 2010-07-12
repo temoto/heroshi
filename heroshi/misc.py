@@ -2,8 +2,13 @@
 
 from eventlet import greenlet, greenthread
 import os
+import pytz
 import sys
 
+
+def to_utc(dt, timezone):
+    tz = pytz.timezone(timezone)
+    return tz.localize(dt, is_dst=True).astimezone(pytz.UTC)
 
 # From http://www.xhaus.com/alan/python/httpcomp.html#gzip
 # Used without permission.
