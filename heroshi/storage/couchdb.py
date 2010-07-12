@@ -1,5 +1,4 @@
-"""Heroshi URL metadata and content storage abstraction layer: CouchDB."""
-
+"""CouchDB storage backend for Heroshi."""
 raise Exception("This backend is not maintained currently.")
 __all__ = ['StorageConnection']
 

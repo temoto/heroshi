@@ -13,9 +13,9 @@ except ImportError:
     import json
 
 from heroshi import TIME_FORMAT, get_logger, log_exceptions
+log = get_logger("manager")
 from heroshi.conf import settings
 from heroshi.data import Cache
-log = get_logger("manager")
 from heroshi.misc import reraise_errors
 from heroshi.profile import Profile
 from heroshi.storage.postgres import StorageConnection
