@@ -276,6 +276,8 @@ class Crawler(object):
                 return report
             else:
                 assert False, u"This branch should not be executed."
+                report['result'] = u"FIXME: unhandled branch in _process."
+                return report
 
             fetch_start_time = time.time()
             fetch_result = self.fetch(uri)
