@@ -1,24 +1,27 @@
 """Heroshi worker implementation.
 
-Gets URLs to crawl from queue server, crawls them, store and send crawl info back to queue server."""
+Gets URLs to crawl from queue server, crawls them via io-worker,
+sends crawl info back to queue server."""
 
 from datetime import datetime
 import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
 import httplib, httplib2
-import random, socket, time, urllib, urlparse
+import json
+import random, time, urllib, urlparse
 import robotparser
+import subprocess
 
 from heroshi import TIME_FORMAT
-from heroshi import api, dns, error, get_logger
+from heroshi import api, error, get_logger
 log = get_logger("worker.Crawler")
 from heroshi.conf import settings
 from heroshi.data import Cache, PoolMap
 from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 from heroshi.misc import reraise_errors
 
-eventlet.monkey_patch(all=False, socket=True, select=True)
+eventlet.monkey_patch(all=False, os=True, socket=True, select=True)
 
 
 class Crawler(object):
@@ -29,14 +32,14 @@ class Crawler(object):
 
         self.queue = Queue(self.max_queue_size)
         self.closed = False
-        self.dns_cache = Cache()
         self._handler_pool = GreenPool(self.max_connections)
-        self._connections = PoolMap(lambda: httplib2.Http(timeout=settings.socket_timeout),
+        self._connections = PoolMap(object,
                                     pool_max_size=self.max_connections_per_host,
                                     timeout=120)
         self._robots_cache = PoolMap(self.get_robots_checker,
                                      pool_max_size=1,
                                      timeout=600)
+        self.start_io()
 
         log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
@@ -63,6 +66,7 @@ class Crawler(object):
 
     def stop(self):
         self.closed = True
+        self._io_worker.kill()
 
     def graceful_stop(self, timeout=None):
         """Stops crawler and waits for all already started crawling requests to finish.
@@ -72,6 +76,7 @@ class Crawler(object):
             Returns False if `timeout` was not enough.
         """
         self.closed = True
+        self._io_worker.stdin.close()
         if timeout is not None:
             with eventlet.Timeout(timeout, False):
                 if hasattr(self, '_queue_updater_thread'):
@@ -130,75 +135,49 @@ class Crawler(object):
             log.exception(u"do_queue_get")
             self.stop()
 
+    def io_reader(self):
+        while not self.closed:
+            result_str = self._io_worker.stdout.readline()
+            if not result_str:
+                sleep(0.01)
+                continue
+            decoded = json.loads(result_str)
+            for k in decoded:
+                decoded[k.lower()] = decoded.pop(k)
+            status = decoded.pop('status')
+            decoded.pop('success')
+            decoded['result'] = u"OK" if status == u"200 OK" else u"non-200: " + status
+            decoded['status_code'] = decoded.pop('statuscode')
+            decoded['content'] = decoded.pop('body')
+            self._io_results[decoded['url']] = decoded
+
+    def start_io(self):
+        self._io_worker = subprocess.Popen("io-worker/io-worker", bufsize=1,
+                                           stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+        self._io_results = {}
+        self._io_reader_thread = spawn(self.io_reader)
+        self._io_reader_thread.link(reraise_errors, greenthread.getcurrent())
+
     def report_item(self, item):
         import cPickle
         pickled = cPickle.dumps(item)
-        log.debug(u"Reporting %s results back to URL server. Size ~= %d KB. Connections cache: %r.",
+        log.debug(u"Reporting %s results back to URL server. Size ~= %d KB.",
                   unicode(item['url']),
-                  len(pickled) / 1024,
-                  self._connections)
+                  len(pickled) / 1024)
         try:
             api.report_result(item)
         except ApiError:
             log.exception(u"report_item")
 
-    def fetch(self, uri, _redirect_counter=0):
-        # FIXME: magic number
-        if _redirect_counter >= 7:
-            return {'result': u"Too many redirects."}
-        log.debug(u"  fetching: %s.", uri)
+    def fetch(self, url):
+        self._io_worker.stdin.write(url+'\n')
 
-        result = {}
-
-        parsed = urlparse.urlsplit(uri)
-        try:
-            addr = dns.gethostbyname(parsed.hostname, cache=self.dns_cache)
-        except dns.DnsError, e:
-            log.info(u"DNS error at %s", uri)
-            result['result'] = u"DNS Error: " + unicode(e)
-            return result
-        conn_key = addr
-        request_uri = uri.replace(parsed.hostname, addr, 1)
-        request_headers = {'user-agent': settings.identity['user_agent'],
-                           'host': parsed.hostname}
-        with self._connections.getc(conn_key) as conn:
-            conn.follow_redirects = False
-            try:
-                response, content = conn.request(request_uri, headers=request_headers)
-            except AttributeError, e:
-                if unicode(e) == u"'NoneType' object has no attribute 'makefile'":
-                    result['result'] = u"FIXME: httplib2 no attribute 'makefile' problem."
-                else:
-                    raise
-            except (AssertionError, KeyboardInterrupt, error.ConfigurationError):
-                raise
-            except socket.timeout:
-                log.info(u"Socket timeout at %s", uri)
-                result['result'] = u"Socket timeout"
-            except httplib.HTTPException, e:
-                log.info(u"HTTP Error at %s: %s", uri, unicode(e))
-                result['result'] = u"HTTP Error: " + unicode(e)
-            except Exception, e:
-                log.exception(u"Get rid of this. fetch @ %s", uri)
-                log.warning(u"HTTP error at %s: %s", uri, str(e))
-                result['result'] = u"HTTP Error: " + unicode(e)
-            else:
-                result['result'] = u"OK"
-                result['status_code'] = response.status
-                # TODO: update tests for this to work
-                result['headers'] = dict(response)
-                result['content'] = content
-
-        if result.get('result') == u"OK" and response.status in (301, 302):
-            new_location = response.get('location')
-            if new_location is not None:
-                result = self.fetch(new_location, _redirect_counter=_redirect_counter+1)
-                result.setdefault('redirects', []).append( (response.status, new_location) )
-                return result
-            else:
-                result['result'] = u"HTTP Error: redirect w/o location"
-
-        return result
+        while not self.closed:
+            v = self._io_results.pop(url, None)
+            if v is not None:
+                return v
+            sleep(0.01)
 
     def get_robots_checker(self, scheme, authority):
         """PoolMap func :: scheme, authority -> (agent, uri -> bool)."""
