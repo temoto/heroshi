@@ -9,11 +9,13 @@ import (
     "net"
     "os"
     "strings"
+    "sync"
 )
 
 // Copied from httplib.go
 type Client struct {
     conn    *http.ClientConn
+    lk       sync.Mutex
     LastURL *http.URL
 }
 
@@ -123,6 +125,10 @@ func (client *Client) Get(url *http.URL) (result *FetchResult) {
         dump, _ := http.DumpRequest(req, true)
         print(string(dump))
     }
+
+    // Prevent simultaneous IO from different goroutines.
+    client.lk.Lock()
+    defer client.lk.Unlock()
 
     resp, err := client.Request(req)
     if err != nil {
