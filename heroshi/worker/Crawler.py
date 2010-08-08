@@ -232,6 +232,7 @@ class Crawler(object):
         timestamp = datetime.now().strftime(TIME_FORMAT)
         report['visited'] = timestamp
         self.report_item(report)
+        self.queue.task_done()
 
     def _process(self, item):
         url = item['url']
