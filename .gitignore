@@ -1,5 +1,7 @@
+*.egg
+*.tar.gz
+Heroshi.egg-info
 build
 dist
 doc/_build
-Heroshi.egg-info
 venv
