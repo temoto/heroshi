@@ -139,8 +139,7 @@ class Crawler(object):
 
     def io_reader(self):
         while not self.closed:
-            with self._io_sem:
-                result_str = self._io_worker.stdout.readline()
+            result_str = self._io_worker.stdout.readline()
             if not result_str:
                 sleep(0.050)
                 continue
@@ -161,7 +160,7 @@ class Crawler(object):
         self._io_results = {}
         self._io_reader_thread = spawn(self.io_reader)
         self._io_reader_thread.link(reraise_errors, greenthread.getcurrent())
-        self._io_sem = Semaphore()
+        self._io_write_sem = Semaphore()
 
     def report_item(self, item):
         import cPickle
@@ -176,7 +175,7 @@ class Crawler(object):
 
     def fetch(self, url):
         try:
-            with self._io_sem:
+            with self._io_write_sem:
                 self._io_worker.stdin.write(url+'\n')
         except IOError, e:
             if e.errno == errno.EPIPE:
