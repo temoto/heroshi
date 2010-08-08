@@ -1,0 +1,7 @@
+build
+doc/_build
+Heroshi.egg-info
+venv
+*.egg
+*.tar.gz
+
