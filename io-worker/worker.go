@@ -20,7 +20,7 @@ type Worker struct {
     // Keep-alive HTTP clients.
     clients map[string]*Client
     // clients list lock
-    cl_lk *sync.RWMutex
+    cl_lk *sync.Mutex
 
     cache redis.Client
 }
@@ -29,7 +29,7 @@ type Worker struct {
 func newWorker() *Worker {
     return &Worker{
         clients: make(map[string]*Client, 1000),
-        cl_lk:   new(sync.RWMutex),
+        cl_lk:   new(sync.Mutex),
     }
 }
 
