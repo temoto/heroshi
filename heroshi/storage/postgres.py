@@ -43,7 +43,7 @@ def item_to_row(item):
     row['headers'] = json.dumps(headers) if headers else None
 
     var = {}
-    if 'parent' in dup: var['parent'] = dup.pop('parent')
+    if 'parent' in dup:    var['parent'] = dup.pop('parent')
     if 'redirects' in dup: var['redirects'] = json.dumps(dup.pop('redirects'))
     row['var'] = json.dumps(var) if var else None
 
