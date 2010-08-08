@@ -15,7 +15,7 @@ import (
 // Copied from httplib.go
 type Client struct {
     conn    *http.ClientConn
-    lk       sync.Mutex
+    lk      sync.Mutex
     LastURL *http.URL
 }
 
