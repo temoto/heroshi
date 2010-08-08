@@ -142,7 +142,7 @@ class Crawler(object):
             with self._io_sem:
                 result_str = self._io_worker.stdout.readline()
             if not result_str:
-                sleep(0.01)
+                sleep(0.050)
                 continue
             decoded = json.loads(result_str)
             for k in decoded:
@@ -190,7 +190,7 @@ class Crawler(object):
             v = self._io_results.pop(url, None)
             if v is not None:
                 return v
-            sleep(0.01)
+            sleep(0.100)
 
     def get_robots_checker(self, scheme, authority):
         """PoolMap func :: scheme, authority -> (agent, uri -> bool)."""
