@@ -26,6 +26,7 @@ type FetchResult struct {
     StatusCode int
     Body       string
     Headers    map[string]string
+    Cached     bool
 }
 
 func ErrorResult(url, reason string) *FetchResult {

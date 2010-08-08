@@ -62,6 +62,7 @@ func (w *Worker) CacheOrDownload(url *http.URL) *FetchResult {
     if encoded, err := w.cache.Get(url.Raw); err == nil {
         cached := new(FetchResult)
         if err := json.Unmarshal(encoded, cached); err == nil {
+            cached.Cached = true
             return cached
         }
     }
