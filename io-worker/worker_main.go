@@ -9,11 +9,11 @@ import (
     "json"
     "os"
     "os/signal"
+    "strconv"
     "syscall"
 )
 
-// TODO: make it configurable
-const NumConcurrentRequests = 1000
+const DefaultConcurrency = 1000
 
 var urls chan conc.Box
 
@@ -94,14 +94,23 @@ func main() {
         }
     }
 
+    max_concurrency := uint(DefaultConcurrency)
+    env_concurrency := os.Getenv("HEROSHI_IO_CONCURRENCY")
+    if env_concurrency != "" {
+        x, err := strconv.Atoui(env_concurrency)
+        if err == nil {
+            max_concurrency = x
+        }
+    }
+
     go processSignals()
     go stdinReader()
 
     // In terms of Eventlet, this is a TokenPool.
     // processUrl reserves an item from this channel,
     // which limits max concurrent requests.
-    limiter := make(chan bool, NumConcurrentRequests)
-    for i := 1; i <= NumConcurrentRequests; i++ {
+    limiter := make(chan bool, max_concurrency)
+    for i := uint(1); i <= max_concurrency; i++ {
         limiter <- true
     }
 
