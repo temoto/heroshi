@@ -6,7 +6,7 @@ sends crawl info back to queue server."""
 from datetime import datetime
 import errno
 import eventlet
-from eventlet import GreenPool, greenthread, sleep, spawn
+from eventlet import GreenPool, greenthread, sleep, spawn, with_timeout
 from eventlet.queue import Empty, Queue
 from eventlet.semaphore import Semaphore
 import httplib, httplib2
@@ -272,7 +272,12 @@ class Crawler(object):
                 return report
 
             fetch_start_time = time.time()
-            fetch_result = self.fetch(uri)
+
+            fetch_result = with_timeout(settings.socket_timeout, self.fetch, uri, timeout_value='timeout')
+            if fetch_result == 'timeout':
+                fetch_result = {}
+                report['result'] = u"Fetch timeout"
+
             fetch_end_time = time.time()
             report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
             report.update(fetch_result)
