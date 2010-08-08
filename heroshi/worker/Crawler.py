@@ -7,6 +7,7 @@ from datetime import datetime
 import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
+from eventlet.semaphore import Semaphore
 import httplib, httplib2
 import json
 import random, time, urllib, urlparse
@@ -137,7 +138,8 @@ class Crawler(object):
 
     def io_reader(self):
         while not self.closed:
-            result_str = self._io_worker.stdout.readline()
+            with self._io_sem:
+                result_str = self._io_worker.stdout.readline()
             if not result_str:
                 sleep(0.01)
                 continue
@@ -158,6 +160,7 @@ class Crawler(object):
         self._io_results = {}
         self._io_reader_thread = spawn(self.io_reader)
         self._io_reader_thread.link(reraise_errors, greenthread.getcurrent())
+        self._io_sem = Semaphore()
 
     def report_item(self, item):
         import cPickle
