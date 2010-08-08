@@ -4,6 +4,7 @@ Gets URLs to crawl from queue server, crawls them via io-worker,
 sends crawl info back to queue server."""
 
 from datetime import datetime
+import errno
 import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn
 from eventlet.queue import Empty, Queue
@@ -174,7 +175,16 @@ class Crawler(object):
             log.exception(u"report_item")
 
     def fetch(self, url):
-        self._io_worker.stdin.write(url+'\n')
+        try:
+            with self._io_sem:
+                self._io_worker.stdin.write(url+'\n')
+        except IOError, e:
+            if e.errno == errno.EPIPE:
+                log.info("IO worker is dead. Restarting...")
+                self.start_io()
+                sleep(1)
+            else:
+                raise
 
         while not self.closed:
             v = self._io_results.pop(url, None)
