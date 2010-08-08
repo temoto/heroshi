@@ -277,6 +277,7 @@ class Crawler(object):
             if fetch_result == 'timeout':
                 fetch_result = {}
                 report['result'] = u"Fetch timeout"
+            fetch_result.pop('cached', None)
 
             fetch_end_time = time.time()
             report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
