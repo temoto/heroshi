@@ -33,6 +33,14 @@ func newWorker() *Worker {
     }
 }
 
+// Deletes `http.Client` associates with `authority` after `timeout`.
+func (w *Worker) staleClient(authority string, timeout int) {
+    time.Sleep(int64(timeout) * 1e9)
+    w.cl_lk.Lock()
+    w.clients[authority] = nil, false
+    w.cl_lk.Unlock()
+}
+
 // Downloads url and returns whatever result was.
 // This function WILL NOT follow redirects.
 func (w *Worker) Download(url *http.URL) *FetchResult {
@@ -41,12 +49,7 @@ func (w *Worker) Download(url *http.URL) *FetchResult {
     if client == nil {
         client = new(Client)
         w.clients[url.Authority] = client
-        go func() {
-            time.Sleep(120 * 1e9)
-            w.cl_lk.Lock()
-            w.clients[url.Authority] = nil, false
-            w.cl_lk.Unlock()
-        }()
+        go w.staleClient(url.Authority, 120)
     }
     w.cl_lk.Unlock()
 
