@@ -4,16 +4,13 @@ Gets URLs to crawl from queue server, crawls them via io-worker,
 sends crawl info back to queue server."""
 
 from datetime import datetime
-import errno
 import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn, with_timeout
 from eventlet.queue import Empty, Queue
-from eventlet.semaphore import Semaphore
 import httplib, httplib2
 import json
 import random, time, urllib, urlparse
 import robotparser
-import subprocess
 
 from heroshi import TIME_FORMAT
 from heroshi import api, error, get_logger
@@ -22,8 +19,12 @@ from heroshi.conf import settings
 from heroshi.data import Cache, PoolMap
 from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 from heroshi.misc import reraise_errors
+from heroshi.worker import io
 
 eventlet.monkey_patch(all=False, os=True, socket=True, select=True)
+
+
+class Stop(error.Error): pass
 
 
 class Crawler(object):
@@ -41,7 +42,11 @@ class Crawler(object):
         self._robots_cache = PoolMap(self.get_robots_checker,
                                      pool_max_size=1,
                                      timeout=600)
-        self.start_io()
+
+        # Start IO worker and die if he does.
+        self.io_worker = io.Worker(lambda: self.closed)
+        t = spawn(self.io_worker.run_loop)
+        t.link(reraise_errors, greenthread.getcurrent())
 
         log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
                   self.max_queue_size, self.max_connections)
@@ -68,7 +73,6 @@ class Crawler(object):
 
     def stop(self):
         self.closed = True
-        self._io_worker.kill()
 
     def graceful_stop(self, timeout=None):
         """Stops crawler and waits for all already started crawling requests to finish.
@@ -78,7 +82,6 @@ class Crawler(object):
             Returns False if `timeout` was not enough.
         """
         self.closed = True
-        self._io_worker.stdin.close()
         if timeout is not None:
             with eventlet.Timeout(timeout, False):
                 if hasattr(self, '_queue_updater_thread'):
@@ -137,65 +140,15 @@ class Crawler(object):
             log.exception(u"do_queue_get")
             self.stop()
 
-    def io_reader(self):
-        while not self.closed:
-            result_str = self._io_worker.stdout.readline()
-            if not result_str:
-                sleep(0.050)
-                continue
-            decoded = json.loads(result_str)
-            for k in decoded:
-                decoded[k.lower()] = decoded.pop(k)
-            status = decoded.pop('status')
-            decoded.pop('success')
-            decoded['result'] = u"OK" if status == u"200 OK" else u"non-200: " + status
-            decoded['status_code'] = decoded.pop('statuscode')
-            decoded['content'] = decoded.pop('body')
-            self._io_results[decoded['url']] = decoded
-
-    def start_io(self):
-        self._io_worker = subprocess.Popen("io-worker/io-worker", bufsize=1,
-                                           stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-
-        self._io_results = {}
-        self._io_reader_thread = spawn(self.io_reader)
-        self._io_reader_thread.link(reraise_errors, greenthread.getcurrent())
-        self._io_write_sem = Semaphore()
-
-    def report_item(self, item):
-        import cPickle
-        pickled = cPickle.dumps(item)
-        log.debug(u"Reporting %s results back to URL server. Size ~= %d KB.",
-                  unicode(item['url']),
-                  len(pickled) / 1024)
-        try:
-            api.report_result(item)
-        except ApiError:
-            log.exception(u"report_item")
-
-    def fetch(self, url):
-        try:
-            with self._io_write_sem:
-                self._io_worker.stdin.write(url+'\n')
-        except IOError, e:
-            if e.errno == errno.EPIPE:
-                log.info("IO worker is dead. Restarting...")
-                self.start_io()
-                sleep(1)
-            else:
-                raise
-
-        while not self.closed:
-            v = self._io_results.pop(url, None)
-            if v is not None:
-                return v
-            sleep(0.100)
-
     def get_robots_checker(self, scheme, authority):
         """PoolMap func :: scheme, authority -> (agent, uri -> bool)."""
         robots_uri = "%s://%s/robots.txt" % (scheme, authority)
 
-        fetch_result = self.fetch(robots_uri)
+        fetch_result = self.io_worker.fetch(robots_uri)
+        # Graceful stop thing.
+        if fetch_result is None:
+            return None
+
         if fetch_result['result'] == u"OK":
             # TODO: set expiration time from headers
             # but this must be done after `self._robots_cache.put` or somehow else...
@@ -222,17 +175,23 @@ class Crawler(object):
         key = scheme+":"+authority
         with self._robots_cache.getc(key, scheme, authority) as checker:
             try:
+                # Graceful stop thing.
+                if checker is None:
+                    return None
                 return checker(settings.identity['name'], uri)
             except Exception, e:
                 log.exception(u"Get rid of this. ask_robots @ %s", uri)
                 raise RobotsError(u"Error checking robots.txt permissions for URI '%s': %s" % (uri, unicode(e)))
 
     def do_process(self, item):
-        report = self._process(item)
-        timestamp = datetime.now().strftime(TIME_FORMAT)
-        report['visited'] = timestamp
-        self.report_item(report)
-        self.queue.task_done()
+        try:
+            report = self._process(item)
+            timestamp = datetime.now().strftime(TIME_FORMAT)
+            report['visited'] = timestamp
+            report_item(report)
+            self.queue.task_done()
+        except Stop:
+            pass
 
     def _process(self, item):
         url = item['url']
@@ -258,6 +217,9 @@ class Crawler(object):
 
             try:
                 robot_check_result = self.ask_robots(uri, scheme, authority)
+                # Graceful stop thing.
+                if robot_check_result is None:
+                    raise Stop()
             except CrawlError, e:
                 report['result'] = unicode(e)
                 return report
@@ -273,7 +235,12 @@ class Crawler(object):
 
             fetch_start_time = time.time()
 
-            fetch_result = with_timeout(settings.socket_timeout, self.fetch, uri, timeout_value='timeout')
+            fetch_result = with_timeout(settings.socket_timeout,
+                                        self.io_worker.fetch,
+                                        uri, timeout_value='timeout')
+            if fetch_result is None:
+                raise Stop()
+
             if fetch_result == 'timeout':
                 fetch_result = {}
                 report['result'] = u"Fetch timeout"
@@ -284,3 +251,14 @@ class Crawler(object):
             report.update(fetch_result)
 
         return report
+
+
+def report_item(item):
+    encoded = json.dumps(item)
+    log.debug(u"Reporting %s results back to URL server. Size ~= %d KB.",
+              unicode(item['url']),
+              len(encoded) / 1024)
+    try:
+        api.report_result(item)
+    except ApiError:
+        log.exception(u"report_item")
