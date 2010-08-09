@@ -7,7 +7,7 @@ from datetime import datetime
 import eventlet
 from eventlet import GreenPool, greenthread, sleep, spawn, with_timeout
 from eventlet.queue import Empty, Queue
-import httplib, httplib2
+import httplib2
 import json
 import random, time, urllib, urlparse
 import robotparser
@@ -16,7 +16,7 @@ from heroshi import TIME_FORMAT
 from heroshi import api, error, get_logger
 log = get_logger("worker.Crawler")
 from heroshi.conf import settings
-from heroshi.data import Cache, PoolMap
+from heroshi.data import PoolMap
 from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 from heroshi.misc import reraise_errors
 from heroshi.worker import io
@@ -31,14 +31,10 @@ class Crawler(object):
     def __init__(self, queue_size, max_connections):
         self.max_queue_size = queue_size
         self.max_connections = max_connections
-        self.max_connections_per_host = 5
 
         self.queue = Queue(self.max_queue_size)
         self.closed = False
         self._handler_pool = GreenPool(self.max_connections)
-        self._connections = PoolMap(object,
-                                    pool_max_size=self.max_connections_per_host,
-                                    timeout=120)
         self._robots_cache = PoolMap(self.get_robots_checker,
                                      pool_max_size=1,
                                      timeout=600)
@@ -93,12 +89,6 @@ class Crawler(object):
             if hasattr(self, '_queue_updater_thread'):
                 self._queue_updater_thread.kill()
             self._handler_pool.waitall()
-
-    def get_active_connections_count(self, key):
-        pool = self._connections._pools.get(key)
-        if pool is None:
-            return 0
-        return pool.max_size - pool.free()
 
     def start_queue_updater(self):
         self._queue_updater_thread = spawn(self.queue_updater)
