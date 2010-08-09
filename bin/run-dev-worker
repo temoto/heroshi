@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+> worker.death.log
+while true
+do
+    GOMAXPROCS=2 HEROSHI_IO_CONCURRENCY=150 HEROSHI_CONFIG_PATH=etc/worker-devel.yaml \
+        venv/bin/heroshi-crawl
+    killall -9 -q io-worker
+    echo "." >> worker.death.log
+    sleep 1s
+done
