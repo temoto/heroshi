@@ -6,6 +6,6 @@ do
     GOMAXPROCS=2 HEROSHI_IO_CONCURRENCY=150 HEROSHI_CONFIG_PATH=etc/worker-devel.yaml \
         venv/bin/heroshi-crawl
     killall -9 -q io-worker
-    echo "." >> worker.death.log
+    echo $(date --rfc-3339=seconds) >> worker.death.log
     sleep 1s
 done
