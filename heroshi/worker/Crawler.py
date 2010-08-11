@@ -201,48 +201,49 @@ class Crawler(object):
         (scheme, authority, _path, _query, _fragment) = httplib2.parse_uri(uri)
         if scheme is None or authority is None:
             report['result'] = u"Invalid URI"
-        else:
-            try:
-                # this line is copied from robotsparser.py:can_fetch
-                urllib.quote(urlparse.urlparse(urllib.unquote(url))[2])
-            except KeyError:
-                report['result'] = u"Malformed URL quoting."
-                return report
+            return report
 
-            try:
-                robot_check_result = self.ask_robots(uri, scheme, authority)
-                # Graceful stop thing.
-                if robot_check_result is None:
-                    raise Stop()
-            except CrawlError, e:
-                report['result'] = unicode(e)
-                return report
-            if robot_check_result == True:
-                pass
-            elif robot_check_result == False:
-                report['result'] = u"Deny by robots.txt"
-                return report
-            else:
-                assert False, u"This branch should not be executed."
-                report['result'] = u"FIXME: unhandled branch in _process."
-                return report
+        try:
+            # this line is copied from robotsparser.py:can_fetch
+            urllib.quote(urlparse.urlparse(urllib.unquote(url))[2])
+        except KeyError:
+            report['result'] = u"Malformed URL quoting."
+            return report
 
-            fetch_start_time = time.time()
-
-            fetch_result = with_timeout(settings.socket_timeout,
-                                        self.io_worker.fetch,
-                                        uri, timeout_value='timeout')
-            if fetch_result is None:
+        try:
+            robot_check_result = self.ask_robots(uri, scheme, authority)
+            # Graceful stop thing.
+            if robot_check_result is None:
                 raise Stop()
+        except CrawlError, e:
+            report['result'] = unicode(e)
+            return report
+        if robot_check_result == True:
+            pass
+        elif robot_check_result == False:
+            report['result'] = u"Deny by robots.txt"
+            return report
+        else:
+            assert False, u"This branch should not be executed."
+            report['result'] = u"FIXME: unhandled branch in _process."
+            return report
 
-            if fetch_result == 'timeout':
-                fetch_result = {}
-                report['result'] = u"Fetch timeout"
-            fetch_result.pop('cached', None)
+        fetch_start_time = time.time()
 
-            fetch_end_time = time.time()
-            report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
-            report.update(fetch_result)
+        fetch_result = with_timeout(settings.socket_timeout,
+                                    self.io_worker.fetch,
+                                    uri, timeout_value='timeout')
+        if fetch_result is None:
+            raise Stop()
+
+        if fetch_result == 'timeout':
+            fetch_result = {}
+            report['result'] = u"Fetch timeout"
+        fetch_result.pop('cached', None)
+
+        fetch_end_time = time.time()
+        report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
+        report.update(fetch_result)
 
         return report
 
