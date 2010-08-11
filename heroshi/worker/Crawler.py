@@ -144,7 +144,11 @@ class Crawler(object):
             # but this must be done after `self._robots_cache.put` or somehow else...
             if 200 <= fetch_result['status_code'] < 300:
                 parser = robotparser.RobotFileParser()
-                parser.parse(fetch_result['content'].splitlines())
+                content_lines = fetch_result['content'].splitlines()
+                try:
+                    parser.parse(content_lines)
+                except KeyError:
+                    raise RobotsError(u"Known robotparser bug: KeyError at urllib.quote(path).")
                 return parser.can_fetch
             # Authorization required and Forbidden are considered Disallow all.
             elif fetch_result['status_code'] in (401, 403):
