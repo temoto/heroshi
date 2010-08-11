@@ -57,7 +57,7 @@ class Worker(object):
 
         Returns `None` when `is_closed` returns True.
         """
-        log.debug("fetch %s", url)
+        #log.debug("fetch %s", url)
         result = self.start_fetch(url)
         # This sleep loop provides a way to stop on crawler close.
         while not result.ready():
