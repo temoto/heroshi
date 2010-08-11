@@ -249,10 +249,7 @@ class Crawler(object):
 
 
 def report_item(item):
-    encoded = json.dumps(item)
-    log.debug(u"Reporting %s results back to URL server. Size ~= %d KB.",
-              unicode(item['url']),
-              len(encoded) / 1024)
+    log.debug(u"Reporting %s results back to URL server.", unicode(item['url']))
     try:
         api.report_result(item)
     except ApiError:
