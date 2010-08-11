@@ -9,16 +9,15 @@ import subprocess
 
 from heroshi import error, get_logger
 log = get_logger("worker.io")
-from heroshi.error import ApiError, CrawlError, FetchError, RobotsError
 
 
 class IoWorkerDead(error.Error): pass
 
 
-def new_state(is_closed):
-    return is_closed, {}
-
 class Worker(object):
+    """IO worker.
+    """
+
     def __init__(self, is_closed):
         self.is_closed = is_closed
         self.results = {}
@@ -84,6 +83,9 @@ class Worker(object):
         return out
 
 def _io_op(op):
+    """Wrapper for IO operations. Runs `op` and returns its result.
+    Raises `IoWorkerDead` on EPIPE error.
+    """
     try:
         return op()
     except IOError, e:
