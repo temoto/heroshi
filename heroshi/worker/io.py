@@ -35,8 +35,20 @@ class Worker(object):
                                        stdout=subprocess.PIPE)
 
         while not self.is_closed():
-            with_timeout(0.050, _read, self.worker, self.results,
-                         timeout_value=None)
+            encoded = with_timeout(0.050, _io_op, self.worker.stdout.readline,
+                                   timeout_value=None)
+            if not encoded:
+                continue
+
+            url, result = _parse(encoded)
+            if url is None:
+                continue
+
+            if url in self.results:
+                out = self.results.pop(url)
+                out.send(result)
+            else:
+                log.error("Got result for non-requested url: %s.", url)
 
         self.worker.stdin.close()
 
@@ -68,7 +80,7 @@ class Worker(object):
             return out
         else:
             self.results[url] = out = Event()
-        _write(self.worker, url)
+        _io_op(lambda: self.worker.stdin.write(url + '\n'))
         return out
 
 def _io_op(op):
@@ -80,11 +92,20 @@ def _io_op(op):
         else:
             raise
 
-def _read(worker, results):
-    result_str = _io_op(worker.stdout.readline)
-    if not result_str:
-        return False
-    decoded = json.loads(result_str)
+def _parse(encoded):
+    """Parses encoded io-worker result. Returns (url, result) tuple on success
+    or (None, error).
+    """
+    try:
+        decoded = json.loads(encoded)
+    except ValueError, e:
+        try:
+            debug_info = json.dumps({'io-worker-data': encoded})
+        except UnicodeDecodeError:
+            debug_info = u"And can't encode debug info."
+        log.error(u"Can't decode incoming data: %s", debug_info)
+        return None, e
+
     for k in decoded:
         decoded[k.lower()] = decoded.pop(k)
     url = decoded['url']
@@ -94,15 +115,4 @@ def _read(worker, results):
     decoded['status_code'] = decoded.pop('statuscode')
     decoded['content'] = decoded.pop('body')
 
-    log.debug("  got: %s", url)
-    if url not in results:
-        log.error("Got result for non-requested url: %s.", url)
-        return True
-
-    out = results.pop(url)
-    out.send(decoded)
-    return True
-
-def _write(worker, url):
-    _io_op(lambda: worker.stdin.write(url + '\n'))
-    return True
+    return url, decoded
