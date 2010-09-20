@@ -18,6 +18,7 @@ Heroshi identifies itself with::
 
     user-agent: HeroshiBot/version (+http://temoto.github.com/heroshi/; temotor@gmail.com)
 
+
 Load problems
 -------------
 
@@ -30,6 +31,7 @@ Instead, it will wait for some time before visiting same pages again.
 So far i believe i'm the only one who runs Heroshi, so if it loads your website too much,
 there is no need to ban User-agent/IP or something, just contact me, and i'll set up as low limit
 for your website/domain/IP, as acceptable.
+
 
 Robots.txt support
 ------------------
@@ -46,10 +48,12 @@ accessible as /robots.txt on your site::
 some sysadmins who limit small unknown bot access. But this is only to bypass awkward limits.
 Heroshi is still load-friendly, browser identity is NOT for abusing your servers.*
 
+
 Contact information
 -------------------
 
 Use this email (XMPP/Jabber too) for questions/demands/reports about Heroshi: temotor@gmail.com
+
 
 License
 -------
