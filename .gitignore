@@ -1,0 +1,5 @@
+build
+dist
+doc/_build
+Heroshi.egg-info
+venv
