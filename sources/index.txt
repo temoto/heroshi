@@ -17,7 +17,10 @@ Download
 
 Code is hosted on `github <http://github.com/>`_, so you may use either
 
-* clone repository to hack around: `git clone git://github.com/temoto/heroshi.git`
+* clone repository to hack around::
+
+  git clone git://github.com/temoto/heroshi.git
+
 * or download `latest Heroshi master tarball <http://github.com/temoto/heroshi/tarball/master>`_.
 
 
