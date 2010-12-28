@@ -11,8 +11,11 @@ import (
     "os/signal"
     "strconv"
     "syscall"
+    "time"
 )
 
+// Should be same as heroshi.__init__.TIME_FORMAT.
+const HeroshiTimeFormat = "2006-01-02T15:04:05"
 const DefaultConcurrency = 1000
 
 var urls chan conc.Box
@@ -126,6 +129,7 @@ func main() {
             headers     map[string]string
             content     string
             cached      bool
+            visited     string
         }
 
         <-limiter
@@ -140,6 +144,7 @@ func main() {
         report.headers = result.Headers
         report.content = result.Body
         report.cached = result.Cached
+        report.visited = time.UTC().Format(HeroshiTimeFormat)
 
         report_json, err := json.Marshal(report)
         if err != nil {
