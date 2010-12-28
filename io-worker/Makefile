@@ -1,6 +1,6 @@
 # Heroshi io-worker in Go.
 
-include $(GOROOT)/src/Make.$(GOARCH)
+include $(GOROOT)/src/Make.inc
 
 TARG  := io-worker
 GOFMT := gofmt -spaces=true -tabindent=false -tabwidth=4

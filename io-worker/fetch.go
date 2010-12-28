@@ -81,7 +81,7 @@ func (client *Client) Request(req *http.Request) (resp *http.Response, err os.Er
             addr += ":http"
         }
 
-        creds := req.URL.Userinfo
+        creds := req.URL.RawUserinfo
         if len(creds) > 0 {
             enc := base64.URLEncoding
             encoded := make([]byte, enc.EncodedLen(len(creds)))

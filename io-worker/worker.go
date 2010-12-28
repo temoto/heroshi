@@ -45,11 +45,11 @@ func (w *Worker) staleClient(authority string, timeout int) {
 // This function WILL NOT follow redirects.
 func (w *Worker) Download(url *http.URL) *FetchResult {
     w.cl_lk.Lock()
-    client := w.clients[url.Authority]
+    client := w.clients[url.Host]
     if client == nil {
         client = new(Client)
-        w.clients[url.Authority] = client
-        go w.staleClient(url.Authority, 120)
+        w.clients[url.Host] = client
+        go w.staleClient(url.Host, 120)
     }
     w.cl_lk.Unlock()
 
