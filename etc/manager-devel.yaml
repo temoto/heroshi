@@ -2,9 +2,7 @@ log:
     level: 1 # absolutely all messages
 
 storage:
-    couchdb_url: http://localhost:5984/
-    db_name: heroshi
-    postgres_dsn: "dbname=heroshi port=5433"
+    postgres_dsn: "dbname=heroshi port=5432"
     max_connections: 2
 
 authorized_keys:

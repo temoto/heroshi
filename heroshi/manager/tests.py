@@ -11,7 +11,7 @@ from heroshi import TIME_FORMAT
 from heroshi.conf import load_from_dict as conf_from_dict, settings
 from heroshi.manager import Manager
 # pylint-silence unused imports required for mocking
-from heroshi.storage.couchdb import StorageConnection # pylint: disable-msg=W0611
+from heroshi.storage.postgres import StorageConnection # pylint: disable-msg=W0611
 
 
 class ManagerTestCase(unittest.TestCase):
