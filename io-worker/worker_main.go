@@ -146,7 +146,8 @@ func main() {
             panic("JSON encode")
             return
         }
-        println(string(report_json))
+        os.Stdout.Write(report_json)
+        os.Stdout.Write([]byte("\n"))
 
         limiter <- true
     }
