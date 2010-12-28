@@ -35,7 +35,8 @@ class Worker(object):
 
         while not self.is_closed():
             encoded = with_timeout(0.050, _io_op, self.worker.stdout.readline,
-                                   timeout_value=None)
+                                   timeout_value="")
+            encoded = encoded.strip()
             if not encoded:
                 continue
 
