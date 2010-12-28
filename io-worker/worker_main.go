@@ -82,6 +82,50 @@ Try ` + "`echo http://localhost/ | " + self_name + "`" + ` to see sample of resu
 }
 
 
+func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
+    // Copy of FetchResult struct with lowercase names.
+    // This is ugly and violates DRY principle.
+    // But also, it allows to extract fetcher as separate package.
+    var report struct {
+        url         string
+        success     bool
+        status      string
+        status_code int
+        headers     map[string]string
+        content     string
+        cached      bool
+        visited     string
+        fetch_time  uint
+    }
+    report.url = result.Url
+    report.success = result.Success
+    report.status = result.Status
+    report.status_code = result.StatusCode
+    report.headers = result.Headers
+    report.content = result.Body
+    report.cached = result.Cached
+    report.visited = time.UTC().Format(HeroshiTimeFormat)
+    report.fetch_time = result.TotalTime
+
+    encoded, err = json.Marshal(report)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Url: %s, error encoding report: %s\n",
+            result.Url, err.String())
+
+        // Most encoding errors happen in content. Try to recover.
+        report.content = ""
+        report.status = err.String()
+        report.success = false
+        report.status_code = 0
+        encoded, err = json.Marshal(report)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "Url: %s, error encoding recovery report: %s\n",
+                result.Url, err.String())
+        }
+    }
+    return
+}
+
 func main() {
     worker := newWorker()
     urls = make(chan conc.Box)
@@ -118,43 +162,19 @@ func main() {
     }
 
     processUrl := func(item conc.Box) {
-        // Copy of FetchResult struct with lowercase names.
-        // This is ugly and violates DRY principle.
-        // But also, it allows to extract fetcher as separate package.
-        var report struct {
-            url         string
-            success     bool
-            status      string
-            status_code int
-            headers     map[string]string
-            content     string
-            cached      bool
-            visited     string
-            fetch_time  uint
-        }
-
         <-limiter
 
         url := item.(*http.URL)
         result := worker.Fetch(url)
 
-        report.url = result.Url
-        report.success = result.Success
-        report.status = result.Status
-        report.status_code = result.StatusCode
-        report.headers = result.Headers
-        report.content = result.Body
-        report.cached = result.Cached
-        report.visited = time.UTC().Format(HeroshiTimeFormat)
-        report.fetch_time = result.TotalTime
+        report_json, err := encodeResult(result)
 
-        report_json, err := json.Marshal(report)
-        if err != nil {
-            panic("JSON encode")
-            return
+        if err == nil {
+            // TODO: maybe needs lock to prevent interleaving of Writes
+            // from other threads?
+            os.Stdout.Write(report_json)
+            os.Stdout.Write([]byte("\n"))
         }
-        os.Stdout.Write(report_json)
-        os.Stdout.Write([]byte("\n"))
 
         limiter <- true
     }
