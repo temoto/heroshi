@@ -46,6 +46,7 @@ setup(
             'heroshid = heroshi.manager.cli_manager:main',
             'heroshi-append = heroshi.worker.cli_append:main',
             'heroshi-crawl = heroshi.worker.cli_crawl:main',
+            'heroshi-get-jobs = heroshi.worker.cli_get_jobs:main',
         ],
     },
 )
