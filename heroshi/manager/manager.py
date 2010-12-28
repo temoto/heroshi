@@ -128,7 +128,7 @@ class Manager(object):
             self._postreport_worker()
 
         # and respawn again
-        self.prefetch_thread = spawn(self.prefetch_worker)
+        self.postreport_thread = spawn(self.prefetch_worker)
 
     @log_exceptions
     def crawl_queue(self, request):
