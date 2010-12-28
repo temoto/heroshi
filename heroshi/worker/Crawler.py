@@ -11,6 +11,7 @@ import httplib2
 import json
 import random, time, urllib, urlparse
 import robotparser
+import sys
 
 from heroshi import TIME_FORMAT
 from heroshi import api, error, get_logger
@@ -28,11 +29,10 @@ class Stop(error.Error): pass
 
 
 class Crawler(object):
-    def __init__(self, queue_size, max_connections):
-        self.max_queue_size = queue_size
+    def __init__(self, max_connections):
         self.max_connections = max_connections
 
-        self.queue = Queue(self.max_queue_size)
+        self.queue = Queue(1)
         self.closed = False
         self._handler_pool = GreenPool(self.max_connections)
         self._robots_cache = PoolMap(self.get_robots_checker,
@@ -44,8 +44,8 @@ class Crawler(object):
         t = spawn(self.io_worker.run_loop)
         t.link(reraise_errors, greenthread.getcurrent())
 
-        log.debug(u"Crawler started. Max queue size: %d, connections: %d.",
-                  self.max_queue_size, self.max_connections)
+        log.debug(u"Crawler started. Max connections: %d.",
+                  self.max_connections)
 
     def crawl(self, forever=True):
         # TODO: do something special about signals?
@@ -95,40 +95,33 @@ class Crawler(object):
         self._queue_updater_thread.link(reraise_errors, greenthread.getcurrent())
 
     def queue_updater(self):
-        while not self.closed:
-            if self.queue.qsize() < self.max_queue_size:
-                self.do_queue_get()
-                sleep()
+        log.debug("Waiting for crawl jobs on stdin.")
+        for line in sys.stdin:
+            if self.closed: break
+
+            line = line.strip()
+
+            # TODO: support JSON jobs
+            if False:
+                #job = json.loads(line)
+                pass
             else:
-                sleep(settings.full_queue_pause)
-
-    def do_queue_get(self):
-        log.debug(u"It's queue update time!")
-        num = self.max_queue_size - self.queue.qsize()
-        log.debug(u"  getting %d items from URL server.", num)
-        try:
-            new_queue = api.get_crawl_queue(num)
-            log.debug(u"  got %d items", len(new_queue))
-
-            if len(new_queue) == 0:
-                log.debug(u"  waiting some time before another request to URL server.")
-                sleep(10.0)
+                job = {'url': line}
 
             # extend worker queue
             # 1. skip duplicate URLs
-            for new_item in new_queue:
-                for queue_item in self.queue.queue:
-                    if queue_item['url'] == new_item['url']: # compare URLs
-                        break
-                else:
-                    # 2. extend queue with new items
-                    self.queue.put(new_item)
+            for queue_item in self.queue.queue:
+                if queue_item['url'] == job['url']: # compare URLs
+                    break
+            else:
+                # 2. extend queue with new items
+                # May block here, when queue is full. This is a feature.
+                self.queue.put(job)
 
-            # shuffle the queue so there are no long sequences of URIs on same domain
-            random.shuffle(self.queue.queue)
-        except ApiError:
-            log.exception(u"do_queue_get")
-            self.stop()
+        # Stdin exhausted -> stop.
+        while not self.queue.empty():
+            sleep(0.01)
+        self.graceful_stop()
 
     def get_robots_checker(self, scheme, authority):
         """PoolMap func :: scheme, authority -> (agent, uri -> bool)."""

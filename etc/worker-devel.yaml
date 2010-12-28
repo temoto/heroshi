@@ -5,7 +5,6 @@ identity:
     name: "HeroshiBot"
     user_agent: "HeroshiBot/0.3 (+http://temoto.github.com/heroshi/; temotor@gmail.com)"
 
-full_queue_pause: 10
 socket_timeout: 60
 manager_url: http://heroshi.localhost/
 api_key: temoto-devel:slawiddawdd2y1d71txi87d1tgiu1xui1yo8d

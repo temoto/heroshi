@@ -1,4 +1,6 @@
-"""Heroshi worker entry-point. Run this to start crawling."""
+"""Heroshi worker entry-point.
+
+Reads \\n-separated list of URLs to crawl from stdin or command line args."""
 
 import logging
 from optparse import OptionParser
@@ -17,9 +19,6 @@ def parse_params():
                           help=u"Be quiet, don't generate any output")
     opt_parser.add_option('-v', '--verbose', action="store_true",
                           help=u"Be verbose, print detailed information")
-    opt_parser.add_option('-Q', '--queue-size',
-                          help=u"Maximum queue size. Crawler will try to keep its queue filled up to this value. [Default = %default]",
-                          metavar="N")
     opt_parser.add_option('-c', '--connections',
                           help=u"Maximum number of open connections. [Default = %default]", metavar="N")
     options, args = opt_parser.parse_args()
@@ -34,12 +33,7 @@ def main():
     elif options.verbose:
         update_loggers_level(logging.DEBUG)
 
-    if len(args) > 0:
-        max_queue_size = len(args)
-    else:
-        max_queue_size = int(options.queue_size)
-
-    crawler = Crawler(max_queue_size, int(options.connections))
+    crawler = Crawler(int(options.connections))
     for url in args:
         crawler.queue.put({'url': url, 'visited': None})
 
