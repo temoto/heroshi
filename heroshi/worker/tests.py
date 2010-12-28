@@ -177,7 +177,6 @@ class RobotsTestCase(unittest.TestCase):
     def test_self_001(self):
         """Quick self-test for testcase: fail on non-registered URI."""
 
-        self.client.dns_cache['dummy-valid.url'] = ['127.0.0.1']
         self.client.queue.put({'url': "http://dummy-valid.url/", 'visited': None, 'links': []})
         self.assertRaises(AssertionError, self.run_crawler)
 
