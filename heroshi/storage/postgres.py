@@ -6,6 +6,7 @@ __all__ = ['StorageConnection']
 from datetime import datetime
 from itertools import imap
 from functools import partial
+import hashlib
 import json
 import psycopg2
 import psycopg2.extensions
@@ -33,6 +34,7 @@ def item_to_row(item):
     dup = dict(item)
     row = {}
     row['url'] = dup.pop('url')
+    row['urlhash'] = hashlib.md5(row['url']).hexdigest()
     visited = dup.pop('visited')
     row['visited'] = datetime.strptime(visited, TIME_FORMAT) if visited else None
     row['result'] = dup.pop('result', None)
