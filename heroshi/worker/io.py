@@ -110,7 +110,6 @@ def _parse(encoded):
         return None, e
 
     url = decoded['url']
-    decoded.pop('success')
     decoded['result'] = decoded.pop('status')
 
     return url, decoded

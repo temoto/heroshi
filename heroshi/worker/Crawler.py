@@ -135,7 +135,7 @@ class Crawler(object):
         if fetch_result is None:
             return None
 
-        if fetch_result['result'] == u"OK":
+        if fetch_result['success']:
             # TODO: set expiration time from headers
             # but this must be done after `self._robots_cache.put` or somehow else...
             if 200 <= fetch_result['status_code'] < 300:
@@ -236,6 +236,7 @@ class Crawler(object):
             fetch_result = {}
             report['result'] = u"Fetch timeout"
         fetch_result.pop('cached', None)
+        fetch_result.pop('success', None)
 
         fetch_end_time = time.time()
         report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
