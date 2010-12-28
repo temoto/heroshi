@@ -8,7 +8,7 @@ from heroshi import __version__
 
 install_requires = [
     'BeautifulSoup',
-    'eventlet == 0.9.9',
+    'eventlet >= 0.9.9',
     'httplib2',
     'psycopg2 >= 2.2.1',
     'webob',
