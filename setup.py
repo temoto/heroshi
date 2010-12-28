@@ -7,7 +7,6 @@ from setuptools import find_packages, setup
 from heroshi import __version__
 
 install_requires = [
-    'BeautifulSoup',
     'eventlet >= 0.9.9',
     'httplib2',
     'psycopg2 >= 2.2.1',
