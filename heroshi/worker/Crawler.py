@@ -176,8 +176,9 @@ class Crawler(object):
     def do_process(self, item):
         try:
             report = self._process(item)
-            timestamp = datetime.utcnow().strftime(TIME_FORMAT)
-            report['visited'] = timestamp
+            if not report.get('visited'):
+                timestamp = datetime.utcnow().strftime(TIME_FORMAT)
+                report['visited'] = timestamp
             report_item(report)
             self.queue.task_done()
         except Stop:
