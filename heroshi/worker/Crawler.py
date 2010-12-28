@@ -180,7 +180,7 @@ class Crawler(object):
     def do_process(self, item):
         try:
             report = self._process(item)
-            timestamp = datetime.now().strftime(TIME_FORMAT)
+            timestamp = datetime.utcnow().strftime(TIME_FORMAT)
             report['visited'] = timestamp
             report_item(report)
             self.queue.task_done()
