@@ -27,6 +27,7 @@ type FetchResult struct {
     Headers    map[string]string
     Body       string
     Cached     bool
+    TotalTime  uint
 }
 
 func ErrorResult(url, reason string) *FetchResult {

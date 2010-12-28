@@ -130,6 +130,7 @@ func main() {
             content     string
             cached      bool
             visited     string
+            fetch_time  uint
         }
 
         <-limiter
@@ -145,6 +146,7 @@ func main() {
         report.content = result.Body
         report.cached = result.Cached
         report.visited = time.UTC().Format(HeroshiTimeFormat)
+        report.fetch_time = result.TotalTime
 
         report_json, err := json.Marshal(report)
         if err != nil {

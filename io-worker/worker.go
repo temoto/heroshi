@@ -72,6 +72,8 @@ func (w *Worker) CacheOrDownload(url *http.URL) *FetchResult {
 
 func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
 
+    started := time.Nanoseconds()
+
     for redirect := 0; ; redirect++ {
         if redirect > 10 {
             result = ErrorResult(url.Raw, "Too much redirects")
@@ -108,6 +110,9 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
         // no redirects required
         break
     }
+    endeded := time.Nanoseconds()
+    result.TotalTime = uint(endeded - started) / 1e6 // in milliseconds
+
     encoded, _ := json.Marshal(result)
     w.cache.Set(url.Raw, encoded)
     return result
