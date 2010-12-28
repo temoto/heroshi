@@ -115,16 +115,38 @@ func main() {
     }
 
     processUrl := func(item conc.Box) {
+        // Copy of FetchResult struct with lowercase names.
+        // This is ugly and violates DRY principle.
+        // But also, it allows to extract fetcher as separate package.
+        var report struct {
+            url         string
+            success     bool
+            status      string
+            status_code int
+            headers     map[string]string
+            content     string
+            cached      bool
+        }
+
         <-limiter
 
         url := item.(*http.URL)
         result := worker.Fetch(url)
-        result_json, err := json.Marshal(result)
+
+        report.url = result.Url
+        report.success = result.Success
+        report.status = result.Status
+        report.status_code = result.StatusCode
+        report.headers = result.Headers
+        report.content = result.Body
+        report.cached = result.Cached
+
+        report_json, err := json.Marshal(report)
         if err != nil {
             panic("JSON encode")
             return
         }
-        println(string(result_json))
+        println(string(report_json))
 
         limiter <- true
     }

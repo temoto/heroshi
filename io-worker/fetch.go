@@ -24,8 +24,8 @@ type FetchResult struct {
     Success    bool
     Status     string
     StatusCode int
-    Body       string
     Headers    map[string]string
+    Body       string
     Cached     bool
 }
 

@@ -108,13 +108,8 @@ def _parse(encoded):
         log.error(u"Can't decode incoming data: %s", debug_info)
         return None, e
 
-    for k in decoded:
-        decoded[k.lower()] = decoded.pop(k)
     url = decoded['url']
-    status = decoded.pop('status')
     decoded.pop('success')
-    decoded['result'] = u"OK" if status == u"200 OK" else u"non-200: " + status
-    decoded['status_code'] = decoded.pop('statuscode')
-    decoded['content'] = decoded.pop('body')
+    decoded['result'] = decoded.pop('status')
 
     return url, decoded
