@@ -121,6 +121,9 @@ class Crawler(object):
         # Stdin exhausted -> stop.
         while not self.queue.empty():
             sleep(0.01)
+
+        sleep(2) # FIXME: Crutch to prevent stopping too early.
+
         self.graceful_stop()
 
     def get_robots_checker(self, scheme, authority):
