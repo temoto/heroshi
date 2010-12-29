@@ -148,11 +148,13 @@ func main() {
             max_concurrency = x
         } else {
             fmt.Fprintln(os.Stderr, "Invalid concurrency limit:", err.String())
+            os.Exit(1)
         }
     }
 
     if max_concurrency <= 0 {
         fmt.Fprintln(os.Stderr, "Invalid concurrency limit:", max_concurrency)
+        os.Exit(1)
     }
 
     go processSignals()
