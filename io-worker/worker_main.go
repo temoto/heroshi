@@ -147,7 +147,13 @@ func main() {
         x, err := strconv.Atoui(env_concurrency)
         if err == nil {
             max_concurrency = x
+        } else {
+            fmt.Fprintln(os.Stderr, "Invalid concurrency limit:", err.String())
         }
+    }
+
+    if max_concurrency <= 0 {
+        fmt.Fprintln(os.Stderr, "Invalid concurrency limit:", max_concurrency)
     }
 
     go processSignals()
