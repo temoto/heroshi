@@ -147,5 +147,9 @@ func (w *Worker) AskRobots(url *http.URL) (bool, *FetchResult) {
         return false, ErrorResult(url.Raw, "Robots test error: "+err.String())
     }
 
+    if !allow {
+        return allow, ErrorResult(url.Raw, "Robots disallow")
+    }
+
     return allow, nil
 }
