@@ -181,7 +181,7 @@ func main() {
     }()
 
     // Fetcher
-    processUrl := func(url) {
+    processUrl := func(url *http.URL) {
         result := worker.Fetch(url)
 
         report_json, err := encodeResult(result)
