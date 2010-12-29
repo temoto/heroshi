@@ -162,43 +162,32 @@ func main() {
     go processSignals()
     go stdinReader()
 
-    // In terms of Eventlet, this is a TokenPool.
-    // processUrl reserves an item from this channel,
-    // which limits max concurrent requests.
-    busy := make(chan bool, max_concurrency)
     done := make(chan bool)
-    url_count := 0
+    write_lock := make(chan bool, 1)
 
-    // Report writer
-    reports := make(chan []byte)
-    go func() {
-        for report := range reports {
-            // nil report is really unrecoverable error. Check stderr.
-            if report != nil {
-                os.Stdout.Write(report)
-                os.Stdout.Write([]byte("\n"))
-            }
-            done <- true
-        }
-    }()
-
-    // Fetcher
     processUrl := func(url *http.URL) {
         result := worker.Fetch(url)
-
         report_json, _ := encodeResult(result)
+
+        // nil report is really unrecoverable error. Check stderr.
+        if report_json != nil {
+            write_lock <- true
+            os.Stdout.Write(report_json)
+            os.Stdout.Write([]byte("\n"))
+            <-write_lock
         }
-
-        <-busy
     }
-    for url := range urls {
-        busy <- true
-        url_count++
-        go processUrl(url)
+    for i := uint(1); i <= max_concurrency ; i++ {
+        go func() {
+            for url := range urls {
+                processUrl(url)
+            }
+            done <- true
+        }()
     }
 
-    // Wait until all URLs are processed.
-    for done_count := 0; done_count < url_count; {
+    done_count := uint(0)
+    for done_count < max_concurrency {
         <-done
         done_count++
     }
