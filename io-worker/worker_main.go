@@ -4,7 +4,6 @@ import (
     "bufio"
     "bytes"
     "fmt"
-    "goconc.googlecode.com/hg"
     "http"
     "json"
     "os"
@@ -18,7 +17,7 @@ import (
 const HeroshiTimeFormat = "2006-01-02T15:04:05"
 const DefaultConcurrency = 1000
 
-var urls chan conc.Box
+var urls chan *http.URL
 
 
 func processSignals() {
@@ -128,7 +127,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
 
 func main() {
     worker := newWorker()
-    urls = make(chan conc.Box)
+    urls = make(chan *http.URL)
 
     // Process command line arguments.
     for _, s := range os.Args[1:] {
@@ -162,29 +161,45 @@ func main() {
     // In terms of Eventlet, this is a TokenPool.
     // processUrl reserves an item from this channel,
     // which limits max concurrent requests.
-    limiter := make(chan bool, max_concurrency)
-    for i := uint(1); i <= max_concurrency; i++ {
-        limiter <- true
-    }
+    busy := make(chan bool, max_concurrency)
+    done := make(chan bool)
+    url_count := 0
 
-    processUrl := func(item conc.Box) {
-        <-limiter
+    // Report writer
+    reports := make(chan []byte)
+    go func() {
+        for report := range reports {
+            // nil report is really unrecoverable error. Check stderr.
+            if report != nil {
+                os.Stdout.Write(report)
+                os.Stdout.Write([]byte("\n"))
+            }
+            done <- true
+        }
+    }()
 
-        url := item.(*http.URL)
+    // Fetcher
+    processUrl := func(url) {
         result := worker.Fetch(url)
 
         report_json, err := encodeResult(result)
-
         if err == nil {
-            // TODO: maybe needs lock to prevent interleaving of Writes
-            // from other threads?
-            os.Stdout.Write(report_json)
-            os.Stdout.Write([]byte("\n"))
+            reports <- report_json
+        } else {
+            reports <- nil
         }
 
-        limiter <- true
+        <-busy
+    }
+    for url := range urls {
+        busy <- true
+        url_count++
+        go processUrl(url)
     }
 
-    wait := conc.For(urls, processUrl)
-    wait()
+    // Wait until all URLs are processed.
+    for done_count := 0; done_count < url_count; {
+        <-done
+        done_count++
+    }
 }
