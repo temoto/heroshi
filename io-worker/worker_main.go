@@ -108,6 +108,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
 
     encoded, err = json.Marshal(report)
     if err != nil {
+        encoded = nil
         fmt.Fprintf(os.Stderr, "Url: %s, error encoding report: %s\n",
             result.Url, err.String())
 
@@ -118,6 +119,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
         report.status_code = 0
         encoded, err = json.Marshal(report)
         if err != nil {
+            encoded = nil
             fmt.Fprintf(os.Stderr, "Url: %s, error encoding recovery report: %s\n",
                 result.Url, err.String())
         }
@@ -184,11 +186,7 @@ func main() {
     processUrl := func(url *http.URL) {
         result := worker.Fetch(url)
 
-        report_json, err := encodeResult(result)
-        if err == nil {
-            reports <- report_json
-        } else {
-            reports <- nil
+        report_json, _ := encodeResult(result)
         }
 
         <-busy
