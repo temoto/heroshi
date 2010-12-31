@@ -18,6 +18,7 @@ const HeroshiTimeFormat = "2006-01-02T15:04:05"
 const DefaultConcurrency = 1000
 
 var urls chan *http.URL
+var reports chan []byte
 
 
 func processSignals() {
@@ -127,6 +128,16 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
     return
 }
 
+func reportWriter(done chan bool) {
+    for r := range reports {
+        if r != nil {
+            os.Stdout.Write(r)
+            os.Stdout.Write([]byte("\n"))
+        }
+    }
+    done <- true
+}
+
 func main() {
     worker := newWorker()
     urls = make(chan *http.URL)
@@ -159,11 +170,21 @@ func main() {
         os.Exit(1)
     }
 
+    reports = make(chan []byte, max_concurrency)
+    done_writing := make(chan bool)
+
     go processSignals()
     go stdinReader()
+    go reportWriter(done_writing)
 
-    done := make(chan bool)
-    write_lock := make(chan bool, 1)
+    limit := make(chan bool, max_concurrency)
+    busy_count := make(chan uint, 1)
+
+    busyCountGet := func() uint {
+        n := <-busy_count
+        busy_count <- n
+        return n
+    }
 
     processUrl := func(url *http.URL) {
         result := worker.Fetch(url)
@@ -171,24 +192,24 @@ func main() {
 
         // nil report is really unrecoverable error. Check stderr.
         if report_json != nil {
-            write_lock <- true
-            os.Stdout.Write(report_json)
-            os.Stdout.Write([]byte("\n"))
-            <-write_lock
+            reports <- report_json
         }
-    }
-    for i := uint(1); i <= max_concurrency ; i++ {
-        go func() {
-            for url := range urls {
-                processUrl(url)
-            }
-            done <- true
-        }()
+
+        busy_count <- (<-busy_count - 1) // atomic decrement
+        <-limit
     }
 
-    done_count := uint(0)
-    for done_count < max_concurrency {
-        <-done
-        done_count++
+    busy_count <- 0
+    for url := range urls {
+        limit <- true
+        busy_count <- (<-busy_count + 1) // atomic decrement
+        go processUrl(url)
     }
+
+    // Ugly poll until all urls are processed.
+    for n := busyCountGet(); n > 0; n = busyCountGet() {
+        time.Sleep(100 * 1e6) // in milliseconds
+    }
+    close(reports)
+    <-done_writing
 }
