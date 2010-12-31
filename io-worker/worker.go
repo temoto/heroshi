@@ -72,6 +72,7 @@ func (w *Worker) CacheOrDownload(url *http.URL) *FetchResult {
 
 func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
 
+    original_url := *url
     started := time.Nanoseconds()
 
     for redirect := 0; ; redirect++ {
@@ -101,7 +102,7 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
             var err os.Error
             url, err = http.ParseURL(location)
             if err != nil {
-                result = ErrorResult(url.Raw, err.String())
+                result = ErrorResult(original_url.Raw, err.String())
                 break
             }
             continue
@@ -114,7 +115,7 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
     result.TotalTime = uint(endeded - started) / 1e6 // in milliseconds
 
     encoded, _ := json.Marshal(result)
-    w.cache.Set(url.Raw, encoded)
+    w.cache.Set(original_url.Raw, encoded)
     return result
 }
 
