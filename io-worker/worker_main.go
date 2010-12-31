@@ -50,10 +50,12 @@ func stdinReader() {
 
         url, err := http.ParseURLReference(string(line))
         if err != nil {
-            panic("ParseURL: " + err.String())
-            return
+            result := ErrorResult(string(line), err.String())
+            report_json, _ := encodeResult(result)
+            reports <- report_json
+        } else {
+            urls <- url
         }
-        urls <- url
 
     Next:
         if read_err == os.EOF {
