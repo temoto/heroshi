@@ -29,8 +29,9 @@ class Stop(error.Error): pass
 
 
 class Crawler(object):
-    def __init__(self, max_connections):
+    def __init__(self, max_connections, input_is_plain):
         self.max_connections = max_connections
+        self.input_is_plain = input_is_plain
 
         self.queue = Queue(1)
         self.closed = False
@@ -101,12 +102,14 @@ class Crawler(object):
 
             line = line.strip()
 
-            # TODO: support JSON jobs
-            if False:
-                #job = json.loads(line)
-                pass
-            else:
+            if self.input_is_plain:
                 job = {'url': line}
+            else:
+                try:
+                    job = json.loads(line)
+                except ValueError:
+                    log.error(u"Decoding input line: %s", line)
+                    continue
 
             # extend worker queue
             # 1. skip duplicate URLs

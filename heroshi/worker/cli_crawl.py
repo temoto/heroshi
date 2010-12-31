@@ -21,6 +21,8 @@ def parse_params():
                           help=u"Be verbose, print detailed information")
     opt_parser.add_option('-c', '--connections',
                           help=u"Maximum number of open connections. [Default = %default]", metavar="N")
+    opt_parser.add_option('-p', '--plain', action="store_true",
+                          help=u"Read plain URLs. If this option is not specified, each input line will be parsed as JSON.")
     options, args = opt_parser.parse_args()
     return options, args
 
@@ -33,7 +35,7 @@ def main():
     elif options.verbose:
         update_loggers_level(logging.DEBUG)
 
-    crawler = Crawler(int(options.connections))
+    crawler = Crawler(int(options.connections), options.plain)
     for url in args:
         crawler.queue.put({'url': url, 'visited': None})
 
