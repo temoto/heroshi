@@ -9,6 +9,7 @@ from optparse import OptionParser
 
 import heroshi, heroshi.api
 from heroshi.log import update_loggers_level
+log = heroshi.get_logger("cli_report")
 
 
 def parse_params():
@@ -34,7 +35,11 @@ def main():
 
     for line in sys.stdin:
         line = line.strip()
-        item = json.loads(line)
+        try:
+            item = json.loads(line)
+        except ValueError, e:
+            log.error(u"Decoding report from '%s'", line)
+            continue
         item['result'] = item.pop('status')
         item.pop('cached', None)
         item.pop('success', None)
