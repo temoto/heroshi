@@ -3,6 +3,7 @@
 
 __all__ = ['StorageConnection']
 
+import base64
 from datetime import datetime
 from itertools import imap
 from functools import partial
@@ -77,6 +78,8 @@ class StorageConnection(object):
     def save_content(self, item, content, content_type):
         """TODO
         """
+        content = base64.standard_b64decode(content)
+
         def job(conn):
             filters = {'url__eq': item['url']}
 

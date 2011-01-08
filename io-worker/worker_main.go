@@ -3,6 +3,7 @@ package main
 import (
     "bufio"
     "bytes"
+    "encoding/base64"
     "fmt"
     "http"
     "json"
@@ -104,10 +105,12 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
     report.status = result.Status
     report.status_code = result.StatusCode
     report.headers = result.Headers
-    report.content = result.Body
     report.cached = result.Cached
     report.visited = time.UTC().Format(HeroshiTimeFormat)
     report.fetch_time = result.TotalTime
+    content_encoded := make([]byte, base64.StdEncoding.EncodedLen(len(result.Body)))
+    base64.StdEncoding.Encode(content_encoded, []byte(result.Body))
+    report.content = string(content_encoded)
 
     encoded, err = json.Marshal(report)
     if err != nil {
