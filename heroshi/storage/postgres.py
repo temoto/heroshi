@@ -93,7 +93,7 @@ class StorageConnection(object):
             else:
                 dbhelpers.update(conn,
                                  TABLE,
-                                 {'content': content,
+                                 {'content': buffer(content),
                                   'content_type': content_type,
                                   'content_length': len(content),
                                  },

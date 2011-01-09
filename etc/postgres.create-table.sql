@@ -26,7 +26,7 @@ CREATE TABLE metadata (
     fetch_time integer,
     result text,
     headers text,
-    content text,
+    content bytea,
     var text,
     content_length integer,
     content_type text
@@ -41,6 +41,13 @@ ALTER TABLE public.metadata OWNER TO temoto;
 
 ALTER TABLE ONLY metadata
     ADD CONSTRAINT metadata_pkey PRIMARY KEY (url);
+
+
+--
+-- Name: metadata_content_b_empty; Type: INDEX; Schema: public; Owner: temoto; Tablespace: 
+--
+
+CREATE INDEX metadata_content_empty ON metadata USING btree ((((content IS NULL) OR (content = ''::bytea))));
 
 
 --
