@@ -116,7 +116,8 @@ class Manager(object):
 
                 if content is None:
                     continue
-                content_type = doc.get('headers', {}).get('content-type', "application/octet-stream")
+                headers = doc.get('headers') or {}
+                content_type = headers.get('content-type', "application/octet-stream")
 
                 storage.save_content(doc, content, content_type)
 
