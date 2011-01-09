@@ -29,8 +29,11 @@ CREATE TABLE metadata (
     content bytea,
     var text,
     content_length integer,
-    content_type text
+    content_type text,
+    urlhash bytea NOT NULL,
+    CONSTRAINT metadata_url_check CHECK ((btrim(url) <> ''::text))
 );
+ALTER TABLE ONLY metadata ALTER COLUMN urlhash SET STORAGE PLAIN;
 
 
 ALTER TABLE public.metadata OWNER TO temoto;
@@ -40,7 +43,7 @@ ALTER TABLE public.metadata OWNER TO temoto;
 --
 
 ALTER TABLE ONLY metadata
-    ADD CONSTRAINT metadata_pkey PRIMARY KEY (url);
+    ADD CONSTRAINT metadata_pkey PRIMARY KEY (urlhash);
 
 
 --
@@ -62,6 +65,23 @@ CREATE INDEX metadata_result ON metadata USING btree (result);
 --
 
 CREATE INDEX metadata_status_code ON metadata USING btree (status_code);
+
+
+--
+
+
+--
+-- Name: metadata_url; Type: INDEX; Schema: public; Owner: temoto; Tablespace: 
+--
+
+CREATE INDEX metadata_url ON metadata USING btree (url);
+
+
+--
+-- Name: metadata_urlhash; Type: INDEX; Schema: public; Owner: temoto; Tablespace: 
+--
+
+CREATE UNIQUE INDEX metadata_urlhash ON metadata USING btree (urlhash);
 
 
 --
