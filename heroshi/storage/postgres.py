@@ -34,8 +34,11 @@ def row_factory(columns, values):
 def item_to_row(item):
     dup = dict(item)
     row = {}
+
     row['url'] = dup.pop('url')
-    row['urlhash'] = hashlib.md5(row['url']).hexdigest()
+    url_utf8 = row['url'].encode('utf-8')
+    row['urlhash'] = hashlib.md5(url_utf8).hexdigest()
+
     visited = dup.pop('visited')
     row['visited'] = datetime.strptime(visited, TIME_FORMAT) if visited else None
     row['result'] = dup.pop('result', None)
