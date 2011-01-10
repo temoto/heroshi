@@ -4,7 +4,6 @@ import (
     "encoding/base64"
     "fmt"
     "http"
-    "io"
     "io/ioutil"
     "net"
     "os"
@@ -36,16 +35,6 @@ func ErrorResult(url, reason string) *FetchResult {
         Success: false,
         Status:  reason,
     }
-}
-
-// Copied from $(GOROOT)/src/pkg/http/client.go
-//
-// Used in Send to implement io.ReadCloser by bundling together the
-// io.BufReader through which we read the response, and the underlying
-// network connection.
-type readClose struct {
-    io.Reader
-    io.Closer
 }
 
 // Copied from $(GOROOT)/src/pkg/http/client.go
