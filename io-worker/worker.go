@@ -111,8 +111,8 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
         // no redirects required
         break
     }
-    endeded := time.Nanoseconds()
-    result.TotalTime = uint(endeded - started) / 1e6 // in milliseconds
+    ended := time.Nanoseconds()
+    result.TotalTime = uint( (ended - started) / 1e6 ) // in milliseconds
 
     encoded, _ := json.Marshal(result)
     w.cache.Set(original_url.Raw, encoded)
