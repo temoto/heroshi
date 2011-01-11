@@ -17,6 +17,9 @@ type Worker struct {
     // when true, any URL is allowed to visit.
     SkipRobots bool
 
+    // How many redirects to follow. Default is 1.
+    FollowRedirects uint
+
     // Timeout for single socket read or write.
     // In nanoseconds. Default is 1e9 (1 second). 0 disables timeout.
     IOTimeout uint64
@@ -40,6 +43,7 @@ type Worker struct {
 
 func newWorker() *Worker {
     return &Worker{
+        FollowRedirects: 1,
         IOTimeout: 1e9,
         FetchTimeout: 60e9,
         KeepAlive: 60,
@@ -102,8 +106,8 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
     original_url := *url
     started := time.Nanoseconds()
 
-    for redirect := 0; ; redirect++ {
-        if redirect > 10 {
+    for redirect := uint(0); ; redirect++ {
+        if redirect > w.FollowRedirects {
             result = ErrorResult(url.Raw, "Too much redirects")
             break
         }

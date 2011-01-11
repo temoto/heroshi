@@ -148,6 +148,7 @@ func main() {
     urls = make(chan *http.URL)
 
     // TODO: make it configurable.
+    worker.FollowRedirects = 10
     worker.IOTimeout = 30e9
     worker.FetchTimeout = 60e9
     worker.KeepAlive = 120
