@@ -147,6 +147,9 @@ func main() {
     worker := newWorker()
     urls = make(chan *http.URL)
 
+    // TODO: make it configurable.
+    worker.IOTimeout = 30e9
+    worker.FetchTimeout = 60e9
     // Process command line arguments.
     for _, s := range os.Args[1:] {
         switch s {

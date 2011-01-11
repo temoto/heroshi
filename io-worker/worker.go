@@ -17,6 +17,15 @@ type Worker struct {
     // when true, any URL is allowed to visit.
     SkipRobots bool
 
+    // Timeout for single socket read or write.
+    // In nanoseconds. Default is 1e9 (1 second). 0 disables timeout.
+    IOTimeout uint64
+
+    // Timeout for whole download. This includes establishing connection,
+    // sending request, receiving response.
+    // In nanoseconds. Default is 60e9 (1 minute). DO NOT use 0.
+    FetchTimeout uint64
+
     // Keep-alive HTTP clients.
     clients map[string]*Client
     // clients list lock
@@ -28,6 +37,8 @@ type Worker struct {
 
 func newWorker() *Worker {
     return &Worker{
+        IOTimeout: 1e9,
+        FetchTimeout: 60e9,
         clients: make(map[string]*Client, 1000),
         cl_lk:   new(sync.Mutex),
     }
@@ -43,17 +54,24 @@ func (w *Worker) staleClient(authority string, timeout int) {
 
 // Downloads url and returns whatever result was.
 // This function WILL NOT follow redirects.
-func (w *Worker) Download(url *http.URL) *FetchResult {
+func (w *Worker) Download(url *http.URL) (result *FetchResult) {
     w.cl_lk.Lock()
     client := w.clients[url.Host]
     if client == nil {
         client = new(Client)
+        client.IOTimeout = w.IOTimeout
         w.clients[url.Host] = client
         go w.staleClient(url.Host, 120)
     }
     w.cl_lk.Unlock()
 
-    result := client.Get(url)
+    req := new(http.Request)
+    req.URL = url
+    req.Header = make(map[string]string, 10)
+    req.UserAgent = "HeroshiBot/0.3 (+http://temoto.github.com/heroshi/; temotor@gmail.com)"
+
+    result = client.FetchWithTimeout(req, w.FetchTimeout)
+
 
     return result
 }

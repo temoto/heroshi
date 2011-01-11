@@ -9,13 +9,28 @@ import (
     "os"
     "strings"
     "sync"
+    "time"
 )
 
 // Copied from httplib.go
 type Client struct {
-    conn    *http.ClientConn
-    lk      sync.Mutex
-    LastURL *http.URL
+    HttpConn *http.ClientConn
+    NetConn  *net.TCPConn
+    LastURL  *http.URL
+
+    // Timeout for single IO socket read or write.
+    // Fetch consists of many IO operations. 30 seconds is reasonable, but
+    // in some cases more could be required.
+    // In nanoseconds. Default is 0 - no timeout.
+    IOTimeout uint64
+
+    // Fetch lock. Prevents simultaneous `FetchWithTimeout` calls for proper
+    // timeout accounting.
+    // TODO: find a better way to implement it. Without a separate lock?
+    fetch_lk sync.Mutex
+
+    // Internal IO operations lock.
+    lk       sync.Mutex
 }
 
 type FetchResult struct {
@@ -57,59 +72,107 @@ func ShouldRedirect(statusCode int) bool {
     return false
 }
 
-// Mostly copy of unexported http.send
-func (client *Client) Request(req *http.Request) (resp *http.Response, err os.Error) {
-    if req.URL.Scheme != "http" {
-        return nil, os.NewError(fmt.Sprint("unsupported protocol scheme", req.URL.Scheme))
+func (client *Client) Connect(addr string) (err os.Error) {
+    if !hasPort(addr) {
+        addr += ":http"
     }
 
-    if client.conn == nil || client.LastURL == nil ||
+    var tcp_addr *net.TCPAddr
+    tcp_addr, err = net.ResolveTCPAddr(addr)
+    if err != nil {
+        return err
+    }
+
+    client.NetConn, err = net.DialTCP("tcp", nil, tcp_addr)
+    if err != nil {
+        return err
+    }
+    client.NetConn.SetKeepAlive(true)
+    client.NetConn.SetLinger(0)
+    // NoDelay is true by default, that's what we need
+    client.NetConn.SetTimeout(int64(client.IOTimeout))
+
+    client.HttpConn = http.NewClientConn(client.NetConn, nil)
+    return nil
+}
+
+func (client *Client) Abort() (err os.Error) {
+    err = client.NetConn.Close()
+    client.Close()
+    return err
+}
+
+func (client *Client) Close() (err os.Error) {
+    if client.HttpConn != nil {
+        // Read buffer returned by HttpConn.Close may contain left over data.
+        client.HttpConn.Close()
+        client.HttpConn = nil
+    }
+    err = client.NetConn.Close()
+    client.NetConn = nil
+    return err
+}
+
+func (client *Client) SendRequest(req *http.Request) (err os.Error) {
+    if req.URL.Scheme != "http" {
+        return os.NewError(fmt.Sprint("unsupported protocol scheme", req.URL.Scheme))
+    }
+
+    // Prevent simultaneous IO from different goroutines.
+    client.lk.Lock()
+    defer client.lk.Unlock()
+
+    if client.HttpConn == nil || client.LastURL == nil ||
         client.LastURL.Host != req.URL.Host {
         //
-        addr := req.URL.Host
-        if !hasPort(addr) {
-            addr += ":http"
+        if err = client.Connect(req.URL.Host); err != nil {
+            return err
         }
-
-        creds := req.URL.RawUserinfo
-        if len(creds) > 0 {
-            enc := base64.URLEncoding
-            encoded := make([]byte, enc.EncodedLen(len(creds)))
-            enc.Encode(encoded, []byte(creds))
-            if req.Header == nil {
-                req.Header = make(map[string]string)
-            }
-            req.Header["Authorization"] = "Basic " + string(encoded)
-        }
-
-        var tcpConn net.Conn
-        if tcpConn, err = net.Dial("tcp", "", addr); err != nil {
-            return nil, err
-        }
-        client.conn = http.NewClientConn(tcpConn, nil)
     }
 
-    err = client.conn.Write(req)
+    err = client.HttpConn.Write(req)
     if err != nil {
-        client.conn.Close()
-        return nil, err
+        client.Close()
+        return err
     }
 
-    resp, err = client.conn.Read()
+    return nil
+}
+
+func (client *Client) GetResponse() (resp *http.Response, err os.Error) {
+    // Prevent simultaneous IO from different goroutines.
+    client.lk.Lock()
+    defer client.lk.Unlock()
+
+    resp, err = client.HttpConn.Read()
     if err != nil && resp == nil {
-        client.conn.Close()
+        client.Close()
         return nil, err
     }
 
     return resp, nil
 }
 
-func (client *Client) Get(url *http.URL) (result *FetchResult) {
-    //
-    req := new(http.Request)
-    req.URL = url
-    req.Header = make(map[string]string, 10)
-    req.UserAgent = "HeroshiBot/0.3 (+http://temoto.github.com/heroshi/; temotor@gmail.com)"
+// Shortcut for synchronous SendRequest + GetResponse.
+// Use those two functions if you want pipelining.
+func (client *Client) Request(req *http.Request) (resp *http.Response, err os.Error) {
+    err = client.SendRequest(req)
+    if err != nil { return nil, err }
+    resp, err = client.GetResponse()
+    return
+}
+
+func (client *Client) Fetch(req *http.Request) (result *FetchResult) {
+    creds := req.URL.RawUserinfo
+    _, has_auth_header := req.Header["Authorization"]
+    if len(creds) > 0 && !has_auth_header {
+        encoded := make([]byte, base64.URLEncoding.EncodedLen(len(creds)))
+        base64.URLEncoding.Encode(encoded, []byte(creds))
+        if req.Header == nil {
+            req.Header = make(map[string]string)
+        }
+        req.Header["Authorization"] = "Basic " + string(encoded)
+    }
 
     // debug
     if false {
@@ -117,29 +180,49 @@ func (client *Client) Get(url *http.URL) (result *FetchResult) {
         print(string(dump))
     }
 
+    resp, err := client.Request(req)
+    if err != nil {
+        return ErrorResult(req.URL.Raw, err.String())
+    }
+
     // Prevent simultaneous IO from different goroutines.
     client.lk.Lock()
     defer client.lk.Unlock()
 
-    resp, err := client.Request(req)
-    if err != nil {
-        return ErrorResult(url.Raw, err.String())
-    }
-
     b, err := ioutil.ReadAll(resp.Body)
     if err != nil {
-        return ErrorResult(url.Raw, err.String())
+        return ErrorResult(req.URL.Raw, err.String())
     }
 
     responseBody := string(b)
     resp.Body.Close()
 
     return &FetchResult{
-        Url:        url.Raw,
+        Url:        req.URL.Raw,
         Success:    true,
         Status:     resp.Status,
         StatusCode: resp.StatusCode,
         Body:       responseBody,
         Headers:    resp.Header,
     }
+}
+
+func (client *Client) FetchWithTimeout(req *http.Request, limit uint64) (result *FetchResult) {
+    client.fetch_lk.Lock()
+    defer client.fetch_lk.Unlock()
+
+    rch := make(chan *FetchResult)
+    timeout := time.After(int64(limit))
+    go func() {
+        rch <- client.Fetch(req)
+    }()
+
+    select {
+    case result = <-rch:
+    case <-timeout:
+        client.Abort()
+        result = ErrorResult(req.URL.Raw, fmt.Sprintf("Fetch timeout: %d", limit / 1e6))
+    }
+
+    return result
 }
