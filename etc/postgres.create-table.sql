@@ -31,6 +31,7 @@ CREATE TABLE metadata (
     content_length integer,
     content_type text,
     urlhash bytea NOT NULL,
+    total_time integer,
     CONSTRAINT metadata_url_check CHECK ((btrim(url) <> ''::text))
 );
 ALTER TABLE ONLY metadata ALTER COLUMN urlhash SET STORAGE PLAIN;

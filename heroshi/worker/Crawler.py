@@ -198,6 +198,8 @@ class Crawler(object):
             'visited': None,
         }
 
+        total_start_time = time.time()
+
         (scheme, authority, _path, _query, _fragment) = httplib2.parse_uri(uri)
         if scheme is None or authority is None:
             report['result'] = u"Invalid URI"
@@ -228,8 +230,6 @@ class Crawler(object):
             report['result'] = u"FIXME: unhandled branch in _process."
             return report
 
-        fetch_start_time = time.time()
-
         fetch_result = with_timeout(settings.socket_timeout,
                                     self.io_worker.fetch,
                                     uri, timeout_value='timeout')
@@ -239,11 +239,12 @@ class Crawler(object):
         if fetch_result == 'timeout':
             fetch_result = {}
             report['result'] = u"Fetch timeout"
+
         fetch_result.pop('cached', None)
         fetch_result.pop('success', None)
 
-        fetch_end_time = time.time()
-        report['fetch_time'] = int((fetch_end_time - fetch_start_time) * 1000)
+        total_end_time = time.time()
+        report['total_time'] = int((total_end_time - total_start_time) * 1000)
         report.update(fetch_result)
 
         return report

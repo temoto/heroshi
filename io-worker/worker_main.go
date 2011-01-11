@@ -99,6 +99,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
         cached      bool
         visited     string
         fetch_time  uint
+        total_time  uint
     }
     report.url = result.Url
     report.success = result.Success
@@ -107,7 +108,8 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
     report.headers = result.Headers
     report.cached = result.Cached
     report.visited = time.UTC().Format(HeroshiTimeFormat)
-    report.fetch_time = result.TotalTime
+    report.fetch_time = result.FetchTime
+    report.total_time = result.TotalTime
     content_encoded := make([]byte, base64.StdEncoding.EncodedLen(len(result.Body)))
     base64.StdEncoding.Encode(content_encoded, []byte(result.Body))
     report.content = string(content_encoded)

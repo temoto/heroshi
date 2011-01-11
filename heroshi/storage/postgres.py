@@ -43,6 +43,7 @@ def item_to_row(item):
     row['visited'] = datetime.strptime(visited, TIME_FORMAT) if visited else None
     row['result'] = dup.pop('result', None)
     row['fetch_time'] = dup.pop('fetch_time', None)
+    row['total_time'] = dup.pop('total_time', None)
     row['status_code'] = dup.pop('status_code', None)
 
     headers = dup.pop('headers', {})

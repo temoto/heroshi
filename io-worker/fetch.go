@@ -41,6 +41,7 @@ type FetchResult struct {
     Headers    map[string]string
     Body       string
     Cached     bool
+    FetchTime  uint
     TotalTime  uint
 }
 
@@ -213,6 +214,7 @@ func (client *Client) FetchWithTimeout(req *http.Request, limit uint64) (result 
 
     rch := make(chan *FetchResult)
     timeout := time.After(int64(limit))
+    started := time.Nanoseconds()
     go func() {
         rch <- client.Fetch(req)
     }()
@@ -223,6 +225,8 @@ func (client *Client) FetchWithTimeout(req *http.Request, limit uint64) (result 
         client.Abort()
         result = ErrorResult(req.URL.Raw, fmt.Sprintf("Fetch timeout: %d", limit / 1e6))
     }
+    ended := time.Nanoseconds()
+    result.FetchTime = uint( (ended - started) / 1e6 ) // in milliseconds
 
     return result
 }
