@@ -31,7 +31,7 @@ type Client struct {
     fetch_lk sync.Mutex
 
     // Internal IO operations lock.
-    lk       sync.Mutex
+    lk  sync.Mutex
 }
 
 type FetchResult struct {
@@ -159,7 +159,9 @@ func (client *Client) GetResponse() (resp *http.Response, err os.Error) {
 // Use those two functions if you want pipelining.
 func (client *Client) Request(req *http.Request) (resp *http.Response, err os.Error) {
     err = client.SendRequest(req)
-    if err != nil { return nil, err }
+    if err != nil {
+        return nil, err
+    }
     resp, err = client.GetResponse()
     return
 }

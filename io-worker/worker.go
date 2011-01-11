@@ -44,11 +44,11 @@ type Worker struct {
 func newWorker() *Worker {
     return &Worker{
         FollowRedirects: 1,
-        IOTimeout: 1e9,
-        FetchTimeout: 60e9,
-        KeepAlive: 60,
-        clients: make(map[string]*Client, 1000),
-        cl_lk:   new(sync.Mutex),
+        IOTimeout:       1e9,
+        FetchTimeout:    60e9,
+        KeepAlive:       60,
+        clients:         make(map[string]*Client, 1000),
+        cl_lk:           new(sync.Mutex),
     }
 }
 
