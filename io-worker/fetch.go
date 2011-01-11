@@ -1,10 +1,11 @@
 package main
 
 import (
+    "bytes"
     "encoding/base64"
     "fmt"
     "http"
-    "io/ioutil"
+    "io"
     "net"
     "os"
     "strings"
@@ -39,7 +40,7 @@ type FetchResult struct {
     Status     string
     StatusCode int
     Headers    map[string]string
-    Body       string
+    Body       []byte
     Cached     bool
     FetchTime  uint
     TotalTime  uint
@@ -190,12 +191,12 @@ func (client *Client) Fetch(req *http.Request) (result *FetchResult) {
     client.lk.Lock()
     defer client.lk.Unlock()
 
-    b, err := ioutil.ReadAll(resp.Body)
+    var buf bytes.Buffer
+    _, err = io.Copy(&buf, resp.Body)
+    responseBody := buf.Bytes()
     if err != nil {
         return ErrorResult(req.URL.Raw, err.String())
     }
-
-    responseBody := string(b)
     resp.Body.Close()
 
     return &FetchResult{

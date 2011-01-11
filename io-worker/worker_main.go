@@ -111,7 +111,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
     report.fetch_time = result.FetchTime
     report.total_time = result.TotalTime
     content_encoded := make([]byte, base64.StdEncoding.EncodedLen(len(result.Body)))
-    base64.StdEncoding.Encode(content_encoded, []byte(result.Body))
+    base64.StdEncoding.Encode(content_encoded, result.Body)
     report.content = string(content_encoded)
 
     encoded, err = json.Marshal(report)
