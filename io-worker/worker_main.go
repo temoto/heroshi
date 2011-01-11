@@ -150,6 +150,8 @@ func main() {
     // TODO: make it configurable.
     worker.IOTimeout = 30e9
     worker.FetchTimeout = 60e9
+    worker.KeepAlive = 120
+
     // Process command line arguments.
     for _, s := range os.Args[1:] {
         switch s {

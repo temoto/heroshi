@@ -26,6 +26,9 @@ type Worker struct {
     // In nanoseconds. Default is 60e9 (1 minute). DO NOT use 0.
     FetchTimeout uint64
 
+    // How long to keep persistent connections, in seconds. Default is 60.
+    KeepAlive uint
+
     // Keep-alive HTTP clients.
     clients map[string]*Client
     // clients list lock
@@ -39,6 +42,7 @@ func newWorker() *Worker {
     return &Worker{
         IOTimeout: 1e9,
         FetchTimeout: 60e9,
+        KeepAlive: 60,
         clients: make(map[string]*Client, 1000),
         cl_lk:   new(sync.Mutex),
     }
@@ -46,7 +50,7 @@ func newWorker() *Worker {
 
 // Deletes `http.Client` associated with `authority` after `timeout`.
 // TODO: prolong timeout on consequtive requests.
-func (w *Worker) staleClient(authority string, timeout int) {
+func (w *Worker) staleClient(authority string, timeout uint) {
     time.Sleep(int64(timeout) * 1e9)
     w.cl_lk.Lock()
     w.clients[authority].Close()
@@ -59,11 +63,11 @@ func (w *Worker) staleClient(authority string, timeout int) {
 func (w *Worker) Download(url *http.URL) (result *FetchResult) {
     w.cl_lk.Lock()
     client := w.clients[url.Host]
+    is_new_client := client == nil
     if client == nil {
         client = new(Client)
         client.IOTimeout = w.IOTimeout
         w.clients[url.Host] = client
-        go w.staleClient(url.Host, 120)
     }
     w.cl_lk.Unlock()
 
@@ -74,6 +78,9 @@ func (w *Worker) Download(url *http.URL) (result *FetchResult) {
 
     result = client.FetchWithTimeout(req, w.FetchTimeout)
 
+    if is_new_client {
+        go w.staleClient(url.Host, w.KeepAlive)
+    }
 
     return result
 }
