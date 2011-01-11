@@ -44,7 +44,8 @@ func newWorker() *Worker {
     }
 }
 
-// Deletes `http.Client` associates with `authority` after `timeout`.
+// Deletes `http.Client` associated with `authority` after `timeout`.
+// TODO: prolong timeout on consequtive requests.
 func (w *Worker) staleClient(authority string, timeout int) {
     time.Sleep(int64(timeout) * 1e9)
     w.cl_lk.Lock()
