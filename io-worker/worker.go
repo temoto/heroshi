@@ -145,8 +145,10 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
     ended := time.Nanoseconds()
     result.TotalTime = uint( (ended - started) / 1e6 ) // in milliseconds
 
-    encoded, _ := json.Marshal(result)
-    w.cache.Set(original_url.Raw, encoded)
+    if !result.Cached {
+        encoded, _ := json.Marshal(result)
+        w.cache.Set(original_url.Raw, encoded)
+    }
     return result
 }
 
