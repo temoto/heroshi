@@ -49,6 +49,7 @@ func newWorker() *Worker {
 func (w *Worker) staleClient(authority string, timeout int) {
     time.Sleep(int64(timeout) * 1e9)
     w.cl_lk.Lock()
+    w.clients[authority].Close()
     w.clients[authority] = nil, false
     w.cl_lk.Unlock()
 }
