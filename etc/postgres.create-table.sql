@@ -48,7 +48,7 @@ ALTER TABLE ONLY metadata
 
 
 --
--- Name: metadata_content_b_empty; Type: INDEX; Schema: public; Owner: temoto; Tablespace: 
+-- Name: metadata_content_empty; Type: INDEX; Schema: public; Owner: temoto; Tablespace: 
 --
 
 CREATE INDEX metadata_content_empty ON metadata USING btree ((((content IS NULL) OR (content = ''::bytea))));
