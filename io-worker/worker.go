@@ -167,10 +167,7 @@ func (w *Worker) AskRobots(url *http.URL) (bool, *FetchResult) {
     }
 
     var robots *robotstxt.RobotsData
-    // TODO: Try to decode body using appropriate character encoding.
-    // string() only tries UTF-8. This is great, but not always sufficient.
-    body_string := string(fetch_result.Body)
-    robots, err = robotstxt.FromResponse(fetch_result.StatusCode, body_string, false)
+    robots, err = robotstxt.FromResponseBytes(fetch_result.StatusCode, fetch_result.Body, false)
     if err != nil {
         fetch_result.Status = "Robots parse error: " + err.String()
         return false, fetch_result
