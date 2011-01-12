@@ -102,7 +102,6 @@ func (w *Worker) CacheOrDownload(url *http.URL) *FetchResult {
 }
 
 func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
-
     original_url := *url
     started := time.Nanoseconds()
 
