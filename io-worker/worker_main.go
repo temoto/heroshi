@@ -71,29 +71,29 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
     // This is ugly and violates DRY principle.
     // But also, it allows to extract fetcher as separate package.
     var report struct {
-        url         string
-        success     bool
-        status      string
-        status_code int
-        headers     map[string]string
-        content     string
-        cached      bool
-        visited     string
-        fetch_time  uint
-        total_time  uint
+        Url         string "url"
+        Success     bool   "success"
+        Status      string "status"
+        Status_code int    "status_code"
+        Headers     map[string]string "headers"
+        Content     string "content"
+        Cached      bool   "cached"
+        Visited     string "visited"
+        Fetch_time  uint   "fetch_time"
+        Total_time  uint   "total_time"
     }
-    report.url = result.Url
-    report.success = result.Success
-    report.status = result.Status
-    report.status_code = result.StatusCode
-    report.headers = result.Headers
-    report.cached = result.Cached
-    report.visited = time.UTC().Format(HeroshiTimeFormat)
-    report.fetch_time = result.FetchTime
-    report.total_time = result.TotalTime
+    report.Url = result.Url
+    report.Success = result.Success
+    report.Status = result.Status
+    report.Status_code = result.StatusCode
+    report.Headers = result.Headers
+    report.Cached = result.Cached
+    report.Visited = time.UTC().Format(HeroshiTimeFormat)
+    report.Fetch_time = result.FetchTime
+    report.Total_time = result.TotalTime
     content_encoded := make([]byte, base64.StdEncoding.EncodedLen(len(result.Body)))
     base64.StdEncoding.Encode(content_encoded, result.Body)
-    report.content = string(content_encoded)
+    report.Content = string(content_encoded)
 
     encoded, err = json.Marshal(report)
     if err != nil {
@@ -102,10 +102,10 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
             result.Url, err.String())
 
         // Most encoding errors happen in content. Try to recover.
-        report.content = ""
-        report.status = err.String()
-        report.success = false
-        report.status_code = 0
+        report.Content = ""
+        report.Status = err.String()
+        report.Success = false
+        report.Status_code = 0
         encoded, err = json.Marshal(report)
         if err != nil {
             encoded = nil
