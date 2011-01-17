@@ -105,12 +105,7 @@ func (w *Worker) Fetch(url *http.URL) (result *FetchResult) {
     original_url := *url
     started := time.Nanoseconds()
 
-    for redirect := uint(0); ; redirect++ {
-        if redirect > w.FollowRedirects {
-            result = ErrorResult(url.Raw, "Too much redirects")
-            break
-        }
-
+    for redirect := uint(0); redirect <= w.FollowRedirects; redirect++ {
         if url.Scheme == "" || url.Host == "" {
             result = ErrorResult(url.Raw, "Incorrect URL: "+url.Raw)
             break
