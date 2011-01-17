@@ -4,12 +4,12 @@ import (
     "bufio"
     "bytes"
     "encoding/base64"
+    "flag"
     "fmt"
     "http"
     "json"
     "os"
     "os/signal"
-    "strconv"
     "syscall"
     "time"
 )
@@ -63,25 +63,6 @@ func stdinReader() {
             return
         }
     }
-}
-
-func help_str(self_name string) string {
-    return fmt.Sprint(`Heroshi IO worker.
-Reads URLs on stdin, fetches them and writes results as JSON on stdout.
-
-Usage:
-    ` + self_name + ` [skip-robots]
-
-When called w/o arguments, IO worker tries to fetch /robots.txt first,
-    parse it and proceed with original request if it considers allow.
-
-With ` + "`skip-robots`" + ` option, IO worker doesn't care about /robots.txt.
-    It behaves like a parallel curl.
-
-Currently there's a hardcoded limit on total concurrent connections: 1000.
-
-Try ` + "`echo http://localhost/ | " + self_name + "`" + ` to see sample of result JSON.
-`)
 }
 
 
@@ -149,39 +130,34 @@ func main() {
     worker := newWorker()
     urls = make(chan *http.URL)
 
-    // TODO: make it configurable.
-    worker.FollowRedirects = 10
-    worker.IOTimeout = 30e9
-    worker.FetchTimeout = 60e9
-    worker.KeepAlive = 120
-
     // Process command line arguments.
-    for _, s := range os.Args[1:] {
-        switch s {
-        case "help", "-help", "--help":
-            print(help_str(os.Args[0]))
-            os.Exit(1)
-        case "skip-robots":
-            worker.SkipRobots = true
-        }
-    }
-
-    max_concurrency := uint(DefaultConcurrency)
-    env_concurrency := os.Getenv("HEROSHI_IO_CONCURRENCY")
-    if env_concurrency != "" {
-        x, err := strconv.Atoui(env_concurrency)
-        if err == nil {
-            max_concurrency = x
-        } else {
-            fmt.Fprintln(os.Stderr, "Invalid concurrency limit:", err.String())
-            os.Exit(1)
-        }
-    }
-
+    var max_concurrency uint
+    flag.UintVar(&max_concurrency,        "jobs",          DefaultConcurrency, "Try to crawl this many URLs in parallel.")
+    flag.UintVar(&worker.FollowRedirects, "redirects",     10,    "How many redirects to follow. Can be 0.")
+    flag.UintVar(&worker.KeepAlive,       "keepalive",     120,   "Keep persistent connections to servers for this many seconds.")
+    flag.BoolVar(&worker.SkipRobots,      "skip-robots",   false, "Don't request and obey robots.txt.")
+    flag.Uint64Var(&worker.IOTimeout,     "io-timeout",    30e3,  "Timeout for single socket operation (read, write) in milliseconds.")
+    flag.Uint64Var(&worker.FetchTimeout,  "total-timeout", 60e3,  "Total timeout for crawling one URL, in milliseconds. Includes all network IO, fetching and checking robots.txt.")
+    show_help := flag.Bool("help", false, "")
+    flag.Parse()
     if max_concurrency <= 0 {
         fmt.Fprintln(os.Stderr, "Invalid concurrency limit:", max_concurrency)
         os.Exit(1)
     }
+    if *show_help {
+        fmt.Fprint(os.Stderr, `Heroshi IO worker.
+Reads URLs on stdin, fetches them and writes results as JSON on stdout.
+
+By default, follows up to 10 redirects.
+By default, fetches /robots.txt first and obeys rules there.
+
+Try 'echo http://localhost/ | io-worker' to see sample of result JSON.
+`)
+        os.Exit(1)
+    }
+    // Milliseconds to nanoseconds.
+    worker.IOTimeout *= 1e6
+    worker.FetchTimeout *= 1e6
 
     reports = make(chan []byte, max_concurrency)
     done_writing := make(chan bool)

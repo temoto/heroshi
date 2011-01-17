@@ -28,7 +28,7 @@ class Worker(object):
 
         You SHOULD spawn this function (so it runs in separate thread).
         """
-        args = ["io-worker/io-worker", "skip-robots"]
+        args = ["io-worker/io-worker", "-skip-robots"]
         self.worker = subprocess.Popen(args, bufsize=1,
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE)
