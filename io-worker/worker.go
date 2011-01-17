@@ -2,10 +2,10 @@ package main
 
 import (
     "fmt"
+    "github.com/hoisie/redis.go"
     "http"
     "json"
     "os"
-    "redis"
     "robotstxt"
     "sync"
     "time"
