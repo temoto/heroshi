@@ -40,6 +40,7 @@ def main():
         except ValueError, e:
             log.error(u"Decoding report from '%s'", line)
             continue
+        item['url'] = item.pop('key')
         item['result'] = item.pop('status')
         item.pop('cached', None)
         item.pop('success', None)
