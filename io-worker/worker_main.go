@@ -53,7 +53,7 @@ func stdinReader() {
         url, err := http.ParseURLReference(line_str)
         if err != nil {
             result := ErrorResult(line_str, err.String())
-            report_json, _ := encodeResult(result)
+            report_json, _ := encodeResult(line_str, result)
             reports <- report_json
         } else {
             urls <- url
@@ -67,11 +67,12 @@ func stdinReader() {
 }
 
 
-func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
-    // Copy of FetchResult struct with lowercase names.
+func encodeResult(key string, result *FetchResult) (encoded []byte, err os.Error) {
+    // Copy of FetchResult struct with new field Key and base64-encoded Body.
     // This is ugly and violates DRY principle.
     // But also, it allows to extract fetcher as separate package.
     var report struct {
+        Key         string "key"
         Url         string "url"
         Success     bool   "success"
         Status      string "status"
@@ -83,6 +84,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
         FetchTime   uint   "fetch_time"
         TotalTime   uint   "total_time"
     }
+    report.Key = key
     report.Url = result.Url
     report.Success = result.Success
     report.Status = result.Status
@@ -178,7 +180,7 @@ Try 'echo http://localhost/ | io-worker' to see sample of result JSON.
 
     processUrl := func(url *http.URL) {
         result := worker.Fetch(url)
-        report_json, _ := encodeResult(result)
+        report_json, _ := encodeResult(url.Raw, result)
 
         // nil report is really unrecoverable error. Check stderr.
         if report_json != nil {

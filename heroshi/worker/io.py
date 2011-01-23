@@ -109,7 +109,7 @@ def _parse(encoded):
         log.error(u"Can't decode incoming data: %s", debug_info)
         return None, e
 
-    url = decoded['url']
+    url = decoded.pop('key')
     decoded['result'] = decoded.pop('status')
 
     return url, decoded
