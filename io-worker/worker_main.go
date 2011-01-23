@@ -48,10 +48,11 @@ func stdinReader() {
         if len(line) == 0 {
             goto Next
         }
+        line_str := string(line)
 
-        url, err := http.ParseURLReference(string(line))
+        url, err := http.ParseURLReference(line_str)
         if err != nil {
-            result := ErrorResult(string(line), err.String())
+            result := ErrorResult(line_str, err.String())
             report_json, _ := encodeResult(result)
             reports <- report_json
         } else {
