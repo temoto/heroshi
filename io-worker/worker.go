@@ -3,10 +3,10 @@ package main
 import (
     "fmt"
     "github.com/hoisie/redis.go"
+    "github.com/temoto/robotstxt.go"
     "http"
     "json"
     "os"
-    "robotstxt"
     "sync"
     "time"
 )
