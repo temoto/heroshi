@@ -74,23 +74,23 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
         Url         string "url"
         Success     bool   "success"
         Status      string "status"
-        Status_code int    "status_code"
+        StatusCode  int    "status_code"
         Headers     map[string]string "headers"
         Content     string "content"
         Cached      bool   "cached"
         Visited     string "visited"
-        Fetch_time  uint   "fetch_time"
-        Total_time  uint   "total_time"
+        FetchTime   uint   "fetch_time"
+        TotalTime   uint   "total_time"
     }
     report.Url = result.Url
     report.Success = result.Success
     report.Status = result.Status
-    report.Status_code = result.StatusCode
+    report.StatusCode = result.StatusCode
     report.Headers = result.Headers
     report.Cached = result.Cached
     report.Visited = time.UTC().Format(HeroshiTimeFormat)
-    report.Fetch_time = result.FetchTime
-    report.Total_time = result.TotalTime
+    report.FetchTime = result.FetchTime
+    report.TotalTime = result.TotalTime
     content_encoded := make([]byte, base64.StdEncoding.EncodedLen(len(result.Body)))
     base64.StdEncoding.Encode(content_encoded, result.Body)
     report.Content = string(content_encoded)
@@ -105,7 +105,7 @@ func encodeResult(result *FetchResult) (encoded []byte, err os.Error) {
         report.Content = ""
         report.Status = err.String()
         report.Success = false
-        report.Status_code = 0
+        report.StatusCode = 0
         encoded, err = json.Marshal(report)
         if err != nil {
             encoded = nil
@@ -191,7 +191,7 @@ Try 'echo http://localhost/ | io-worker' to see sample of result JSON.
     busy_count <- 0
     for url := range urls {
         limit <- true
-        busy_count <- (<-busy_count + 1) // atomic decrement
+        busy_count <- (<-busy_count + 1) // atomic increment
         go processUrl(url)
     }
 
