@@ -37,7 +37,7 @@ def item_to_row(item):
 
     row['url'] = dup.pop('url')
     url_utf8 = row['url'].encode('utf-8')
-    row['urlhash'] = hashlib.md5(url_utf8).hexdigest()
+    row['urlhash'] = buffer(hashlib.md5(url_utf8).digest())
 
     visited = dup.pop('visited')
     row['visited'] = datetime.strptime(visited, TIME_FORMAT) if visited else None
