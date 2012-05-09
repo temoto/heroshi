@@ -3,5 +3,6 @@
 Heroshi.egg-info
 build
 dist
+heroshi/VERSION
 doc/_build
 venv

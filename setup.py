@@ -1,10 +1,11 @@
 # coding: utf-8
 from distribute_setup import use_setuptools
 use_setuptools()
-from os import path
+import os
 from setuptools import find_packages, setup
 
-from heroshi import __version__
+from get_git_version import get_git_version
+
 
 install_requires = [
     'eventlet >= 0.9.9',
@@ -20,19 +21,23 @@ except ImportError:
 
 setup(
     name='Heroshi',
-    version=__version__,
+    version=get_git_version(length=6),
 
     description=u"Web crawler.",
     long_description=open(
-        path.join(
-            path.dirname(__file__),
+        os.path.join(
+            os.path.dirname(__file__),
             'README'
         )
     ).read(),
-    author='Sergey Shepelev',
+    author=u"Sergey Shepelev",
 
     classifiers=[
+        "Development Status :: 3 - Alpha",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Go",
         "Programming Language :: Python",
+        "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
     ],
 
     packages=find_packages(),
