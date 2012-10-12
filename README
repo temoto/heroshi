@@ -1,5 +1,9 @@
-Heroshi
-The scalable web crawler.
+Heroshi, open source web crawler.
+
+Motivation 1: learn HTTP, libraries, real world quirks.
+Motivation 2: collection of libraries and tools for building custom crawlers.
+Motivation 3: provide access to representative subset of Web for educational and research purposes.
+
+As of 2012-10-12, last goal is not even started, but these guys did amazing job at it http://commoncrawl.org/
 
 See http://temoto.github.com/heroshi/ for more information.
-

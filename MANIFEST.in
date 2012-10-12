@@ -1,2 +1,0 @@
-include heroshi/VERSION
-include get_git_version.py

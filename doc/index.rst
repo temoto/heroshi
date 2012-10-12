@@ -1,13 +1,14 @@
 Heroshi documentation
 =====================
 
-Heroshi is a scalable `web crawler <http://en.wikipedia.org/wiki/Web_crawler>`_.
+Heroshi is a `web crawler <http://en.wikipedia.org/wiki/Web_crawler>`_.
 
 The goal of the project is to build very fast, distributed web spider.
 
-Heroshi consists of :doc:`queue manager <queue-manager>` and :doc:`workers <worker>`.
-Workers communicate with queue manager, ask it what to crawl, then report back with results.
-Workers store downloaded pages into :doc:`storage <storage>` through queue manager.
+Current status:
+
+* low level HTTP client – alpha, usable for test runs
+* URL queue – not started
 
 Project is under heavy development, so expect big changes.
 
@@ -15,7 +16,11 @@ Project is under heavy development, so expect big changes.
 Download
 --------
 
-Code is hosted on `github <http://github.com/>`_, so you may use either
+`Heroshi source code <https://github.com/temoto/heroshi>`_ is hosted on `Github <http://github.com/>`_, so you may use either
+
+* go get/install::
+
+    go install github.com/temoto/heroshi/heroshi-worker
 
 * clone repository to hack around::
 
@@ -29,13 +34,13 @@ Identity
 
 Heroshi identifies itself with::
 
-    user-agent: HeroshiBot/version (+http://temoto.github.com/heroshi/; temotor@gmail.com)
+    User-Agent: HeroshiBot/version (+http://temoto.github.com/heroshi/; temotor@gmail.com)
 
 
 Load problems
 -------------
 
-Heroshi worker doesn't open more than 5 concurrent connections to each IP address. This is a very low load
+Heroshi worker doesn't open more than 1 concurrent connection to each domain:port. This is a very low load
 to properly configured websites but the world is not perfect, and it may hurt legacy installations.
 
 Heroshi was not meant to be a harm tool, it will not abuse your servers again and again continuously.
@@ -49,17 +54,13 @@ for your website/domain/IP, as acceptable.
 Robots.txt support
 ------------------
 
-Heroshi obeys `standard robots.txt rules <http://www.robotstxt.org/robotstxt.html>`_.
+Heroshi obeys `standard robots.txt rules <http://www.robotstxt.org/robotstxt.html>`_. As implemented by `Go robots.txt library <https://github.com/temoto/robotstxt.go>`_.
 
 To completely disallow Heroshi crawl your site, place the following lines into file,
 accessible as /robots.txt on your site::
 
     User-agent: HeroshiBot
     Disallow: /
-
-*There will be branch devoted to identifying bot as a browser while crawling the web because of
-some sysadmins who limit small unknown bot access. But this is only to bypass awkward limits.
-Heroshi is still load-friendly, browser identity is NOT for abusing your servers.*
 
 
 Contact information
@@ -80,7 +81,6 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   queue-manager
    worker
    storage
 
