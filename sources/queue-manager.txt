@@ -1,5 +1,0 @@
-Queue manager (TODO)
-====================
-
-**TODO**
-
