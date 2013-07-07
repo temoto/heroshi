@@ -94,10 +94,6 @@ func (e *Error) Error() string   { return e.str }
 func (e *Error) Timeout() bool   { return e.timeout }
 func (e *Error) Temporary() bool { return e.temporary }
 
-// Given a string of the form "host", "host:port", or "[ipv6::address]:port",
-// return true if the string includes a port.
-func HasPort(s string) bool { return strings.LastIndex(s, ":") > strings.LastIndex(s, "]") }
-
 func (t *Transport) RoundTripOptions(req *http.Request, opt *RequestOptions) (resp *http.Response, err error) {
 	if opt != nil && opt.Stat != nil && opt.Stat.Started.IsZero() {
 		opt.Stat.Started = time.Now()
