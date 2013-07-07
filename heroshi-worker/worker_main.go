@@ -270,11 +270,15 @@ readUrlsLoop:
 		}
 	}
 
+	var prevUrlCount uint64
 	go func() {
+		const statusPrintDuration time.Duration = 1 * time.Second
 		for {
-			time.Sleep(1 * time.Second)
+			prevUrlCount = urlCount
+			time.Sleep(statusPrintDuration)
+			speed := float64(urlCount-prevUrlCount) / float64(statusPrintDuration/time.Second)
 			nHosts, nConns := worker.hostLimits.Size()
-			println("--- URL #", urlCount, "Open", nConns, "connections to", nHosts, "hosts.")
+			println("--- URL #", urlCount, "Open", nConns, "connections to", nHosts, "hosts. Speed:", int(speed*10)/10, "qps")
 			runtime.GC()
 		}
 	}()
