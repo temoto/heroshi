@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+type Nothing struct{}
+
 var urls chan *url.URL
 var reports chan []byte
 
@@ -226,7 +228,7 @@ Run 'heroshi-worker -h' for flags description.
 	go stdinReader(stop)
 	go reportWriter(doneWriting)
 
-	limit := make(chan bool, maxConcurrency)
+	limit := make(chan Nothing, maxConcurrency)
 	var urlCount uint64 = 0
 	busy := sync.WaitGroup{}
 
@@ -250,7 +252,7 @@ readUrlsLoop:
 			if !ok {
 				break readUrlsLoop
 			}
-			limit <- true
+			limit <- Nothing{}
 			urlCount++
 			busy.Add(1)
 			go processUrl(u)
