@@ -6,6 +6,7 @@ import (
 	"github.com/temoto/heroshi/heroshi"
 	"github.com/temoto/heroshi/limitmap" // Temporary location
 	"github.com/temoto/robotstxt.go"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -204,8 +205,32 @@ func (w *Worker) AskRobots(url *url.URL) (bool, *heroshi.FetchResult) {
 }
 
 func Dial(netw, addr string, options *heroshi.RequestOptions) (net.Conn, error) {
+	// TODO: resolve time limit
+	// tcpAddr, err := net.ResolveTCPAddr(netw, addr)
+	// log.Println("Dial: resolved:", tcpAddr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	var tcpAddr net.TCPAddr
+	addrString, _ := heroshi.SplitPort(addr)
+	addrs, resolveTime, err := heroshi.ResolveName(addrString, "127.0.0.1:53")
+	if err != nil {
+		log.Println("Dial: resolve error:", err.Error(), "in", resolveTime.String())
+		return nil, err
+	}
+	if len(addrs) > 0 {
+		ip := addrs[0]
+		tcpAddr.IP = ip
+		log.Println("Dial: resolved:", ip.String(), "in", resolveTime.String())
+	}
+	addr = tcpAddr.String()
+	if options != nil && options.Stat != nil {
+		options.Stat.RemoteAddr = &tcpAddr
+	}
+
+	return nil, errors.New("Dial-stub")
+
 	var conn net.Conn
-	var err error
 	if options != nil && options.ConnectTimeout != 0 {
 		conn, err = net.DialTimeout(netw, addr, options.ConnectTimeout)
 	} else {
