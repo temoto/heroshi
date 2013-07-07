@@ -213,6 +213,9 @@ Run 'heroshi-worker -h' for flags description.
 		defer f.Close()
 	}
 
+	// Set number of parallel threads to number of CPUs.
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	reports = make(chan []byte, maxConcurrency)
 	stop := make(chan bool)
 	doneWriting := make(chan bool)
