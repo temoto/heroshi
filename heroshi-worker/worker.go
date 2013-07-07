@@ -132,7 +132,7 @@ func (w *Worker) CacheOrDownload(url *url.URL) *FetchResult {
 */
 
 func (w *Worker) Fetch(url *url.URL) (result *heroshi.FetchResult) {
-	original_url := url
+	originalUrl := url
 	started := time.Now()
 	defer func() {
 		if result != nil {
@@ -163,7 +163,7 @@ func (w *Worker) Fetch(url *url.URL) (result *heroshi.FetchResult) {
 			var err error
 			url, err = url.Parse(location)
 			if err != nil {
-				return heroshi.ErrorResult(original_url, err.Error())
+				return heroshi.ErrorResult(originalUrl, err.Error())
 			}
 			continue
 		}
@@ -175,24 +175,24 @@ func (w *Worker) Fetch(url *url.URL) (result *heroshi.FetchResult) {
 }
 
 func (w *Worker) AskRobots(url *url.URL) (bool, *heroshi.FetchResult) {
-	robots_url_str := fmt.Sprintf("%s://%s/robots.txt", url.Scheme, url.Host)
-	robots_url, err := url.Parse(robots_url_str)
+	robotsUrlString := fmt.Sprintf("%s://%s/robots.txt", url.Scheme, url.Host)
+	robotsUrl, err := url.Parse(robotsUrlString)
 	if err != nil {
 		return false, heroshi.ErrorResult(url, err.Error())
 	}
 
-	fetch_result := w.Fetch(robots_url)
+	fetchResult := w.Fetch(robotsUrl)
 
-	if !fetch_result.Success {
-		fetch_result.Status = "Robots download error: " + fetch_result.Status
-		return false, fetch_result
+	if !fetchResult.Success {
+		fetchResult.Status = "Robots download error: " + fetchResult.Status
+		return false, fetchResult
 	}
 
 	var robots *robotstxt.RobotsData
-	robots, err = robotstxt.FromStatusAndBytes(fetch_result.StatusCode, fetch_result.Body)
+	robots, err = robotstxt.FromStatusAndBytes(fetchResult.StatusCode, fetchResult.Body)
 	if err != nil {
-		fetch_result.Status = "Robots parse error: " + err.Error()
-		return false, fetch_result
+		fetchResult.Status = "Robots parse error: " + err.Error()
+		return false, fetchResult
 	}
 
 	allow := robots.TestAgent(url.Path, w.UserAgent)
@@ -214,14 +214,14 @@ func Dial(netw, addr string, options *heroshi.RequestOptions) (net.Conn, error) 
 	if err != nil {
 		return conn, err
 	}
-	tcp_conn, ok := conn.(*net.TCPConn)
+	tcpConn, ok := conn.(*net.TCPConn)
 	if !ok {
 		return conn, errors.New("Dial: conn->TCPConn type assertion failed.")
 	}
-	tcp_conn.SetKeepAlive(true)
-	tcp_conn.SetLinger(0)
-	tcp_conn.SetNoDelay(true)
-	return tcp_conn, err
+	tcpConn.SetKeepAlive(true)
+	tcpConn.SetLinger(0)
+	tcpConn.SetNoDelay(true)
+	return tcpConn, err
 }
 
 func FirstWord(s string) string {
