@@ -21,6 +21,8 @@ import (
 const DefaultUserAgent = "HeroshiBot/1 (unknown_owner; +http://temoto.github.com/heroshi/)"
 const DefaultReadLimit = 10 << 20 // 10MB
 
+var NameServerAddress = "127.0.0.1:53"
+
 type Worker struct {
 	// When false (default), worker will obey /robots.txt
 	// when true, any URL is allowed to visit.
@@ -205,30 +207,27 @@ func (w *Worker) AskRobots(url *url.URL) (bool, *heroshi.FetchResult) {
 }
 
 func Dial(netw, addr string, options *heroshi.RequestOptions) (net.Conn, error) {
-	// TODO: resolve time limit
-	// tcpAddr, err := net.ResolveTCPAddr(netw, addr)
-	// log.Println("Dial: resolved:", tcpAddr)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	var tcpAddr net.TCPAddr
-	addrString, _ := heroshi.SplitPort(addr)
-	addrs, resolveTime, err := heroshi.ResolveName(addrString, "127.0.0.1:53")
+	addrString, addrPort := heroshi.SplitPort(addr)
+	var ip net.IP
+	addrs, resolveTime, err := heroshi.ResolveName(addrString, NameServerAddress)
 	if err != nil {
 		log.Println("Dial: resolve error:", err.Error(), "in", resolveTime.String())
 		return nil, err
 	}
 	if len(addrs) > 0 {
-		ip := addrs[0]
-		tcpAddr.IP = ip
-		log.Println("Dial: resolved:", ip.String(), "in", resolveTime.String())
+		ip = addrs[0]
+		// log.Printf("Dial: resolved: %s -> %s in %s", addr, ip.String(), resolveTime.String())
+		addr = ip.String()
 	}
-	addr = tcpAddr.String()
 	if options != nil && options.Stat != nil {
+		var tcpAddr net.TCPAddr
+		tcpAddr.IP = ip
 		options.Stat.RemoteAddr = &tcpAddr
+		options.Stat.ResolveTime = resolveTime
 	}
 
-	return nil, errors.New("Dial-stub")
+	// Return port back
+	addr += ":" + addrPort
 
 	var conn net.Conn
 	if options != nil && options.ConnectTimeout != 0 {

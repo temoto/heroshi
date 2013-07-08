@@ -74,6 +74,7 @@ type RequestStat struct {
 	Started        time.Time
 	ConnectionAge  time.Duration
 	ConnectionUse  uint
+	ResolveTime    time.Duration
 	ConnectTime    time.Duration
 	WriteTime      time.Duration
 	ReadHeaderTime time.Duration

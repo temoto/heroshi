@@ -84,6 +84,7 @@ func encodeResult(key string, result *heroshi.FetchResult) (encoded []byte, err 
 		Started        string `json:"started"`
 		ConnectionAge  uint   `json:"connection_age"`
 		ConnectionUse  uint   `json:"connection_use"`
+		ResolveTime    uint   `json:"resolve_time"`
 		ConnectTime    uint   `json:"connect_time"`
 		WriteTime      uint   `json:"write_time,omitempty"`
 		ReadHeaderTime uint   `json:"read_header_time,omitempty"`
