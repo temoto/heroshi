@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/temoto/heroshi/heroshi"
 	"github.com/temoto/heroshi/limitmap" // Temporary location
-	"github.com/temoto/robotstxt.go"
+	"github.com/temoto/robotstxt-go"
 	"log"
 	"net"
 	"net/http"

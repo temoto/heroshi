@@ -26,16 +26,16 @@ func ResolveName(name, nameserver string) (addrs []net.IP, rtt time.Duration, er
 
 Redo:
 	var reply *dns.Msg
-	reply, rtt, err = dnsClient.ExchangeRtt(dnsMessage, nameserver)
+	reply, rtt, err = dnsClient.Exchange(dnsMessage, nameserver)
 	if err != nil {
 		return nil, rtt, err
 	}
 	if reply.Rcode != dns.RcodeSuccess {
-		err = errors.New("ResolveName(" + name + ", " + nameserver + "): " + dns.Rcode_str[reply.Rcode])
+		err = errors.New("ResolveName(" + name + ", " + nameserver + "): " + dns.RcodeToString[reply.Rcode])
 		return nil, rtt, err
 	}
 	for _, a := range reply.Answer {
-		if rra, ok := a.(*dns.RR_A); ok {
+		if rra, ok := a.(*dns.A); ok {
 			addrs = append(addrs, rra.A)
 		}
 	}
