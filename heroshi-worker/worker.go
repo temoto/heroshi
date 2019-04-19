@@ -3,9 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/temoto/heroshi/heroshi"
-	"github.com/temoto/heroshi/limitmap" // Temporary location
-	"github.com/temoto/robotstxt-go"
 	"log"
 	"net"
 	"net/http"
@@ -13,6 +10,10 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/temoto/heroshi/heroshi"
+	"github.com/temoto/limitmap"
+	"github.com/temoto/robotstxt"
 	// Cache:
 	//"github.com/hoisie/redis.go"
 	//"json"

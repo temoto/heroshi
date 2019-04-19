@@ -2,11 +2,12 @@ package heroshi
 
 import (
 	"errors"
-	"github.com/miekg/dns"
-	"github.com/temoto/heroshi/limitmap" // Temporary location
 	"log"
 	"net"
 	"time"
+
+	"github.com/miekg/dns"
+	"github.com/temoto/limitmap"
 )
 
 var (
